@@ -20,7 +20,7 @@ final class DDMStore: ObservableObject {
     // v2: economy was rebalanced incompatibly — start fresh so old saves (overpowered
     // from the earlier too-cheap builds, with a high maxDepth that dumped every depth
     // milestone at once) don't trivialise the new curve.
-    private static let saveKey = "ddm.save.v5"
+    private static let saveKey = "ddm.save.v6"
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
 
@@ -53,7 +53,7 @@ final class DDMStore: ObservableObject {
     var gemMultiplier: Double {
         let g = Double(max(0, save.gems))
         if g <= 0 { return 1.0 }
-        let m = 1.0 + pow(g, 0.78) * 0.02
+        let m = 1.0 + pow(g, 0.78) * 0.30
         return m.isFinite ? m : 1.0
     }
 
@@ -75,7 +75,7 @@ final class DDMStore: ObservableObject {
     // Multiplicative "milestone" bonus: x2 every 35 levels (was 25 — slower so the
     // doubling can't snowball past the cost curve).
     private func milestoneScale(_ level: Int) -> Double {
-        let steps = level / 60
+        let steps = level / 35
         return pow(2.0, Double(steps))
     }
 
@@ -88,7 +88,7 @@ final class DDMStore: ObservableObject {
     // Slightly softer per-level slope than before (was +2/level) to match steeper costs.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 0.06
+        let base = 1.0 + Double(lvl) * 1.0
         let d = base * milestoneScale(lvl) * damageMultiplier
         return d.isFinite ? max(1, d) : 1
     }
@@ -115,8 +115,8 @@ final class DDMStore: ObservableObject {
         let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 2.0
         if count <= 0 { return 0 }
         let speedLvl = upgradeLevel(.drillSpeed)
-        let perDrill = 0.05 * milestoneScale(countLvl)
-        let speed = (1.0 + Double(speedLvl) * 0.012) * milestoneScale(speedLvl)
+        let perDrill = 3.0 * milestoneScale(countLvl)
+        let speed = (1.0 + Double(speedLvl) * 0.35) * milestoneScale(speedLvl)
         let gearing = 1.0 + Double(upgradeLevel(.drillEfficiency)) * 0.15
         let turbo = 1.0 + Double(techLevel(.turboDrills)) * 0.08
         let dps = count * perDrill * speed * gearing * turbo * damageMultiplier
@@ -155,8 +155,8 @@ final class DDMStore: ObservableObject {
 
     // Ore sell value multiplier (raw ore). Softer grader step (was 0.25) to match costs.
     var oreValueMultiplier: Double {
-        let grader = 1.0 + Double(upgradeLevel(.oreValue)) * 0.007
-        let refiner = 1.0 + Double(upgradeLevel(.refiner)) * 0.006
+        let grader = 1.0 + Double(upgradeLevel(.oreValue)) * 0.18
+        let refiner = 1.0 + Double(upgradeLevel(.refiner)) * 0.15
         let m = grader * refiner * yieldMultiplier * goldFindMultiplier
         return m.isFinite ? m : 1.0
     }
@@ -164,7 +164,7 @@ final class DDMStore: ObservableObject {
     // Per-ore mastery value multiplier for a specific ore.
     func oreMasteryMultiplier(_ ore: DDMOre) -> Double {
         let lvl = save.oreMastery[ore.rawValue] ?? 0
-        let m = 1.0 + Double(lvl) * 0.006
+        let m = 1.0 + Double(lvl) * 0.10
         return m.isFinite ? max(1.0, m) : 1.0
     }
 
@@ -889,7 +889,7 @@ final class DDMStore: ObservableObject {
             // high-value ore -> no "billions in a minute") AND prevents the old
             // 5000-clears/tick CPU lag. Overflow DPS beyond the cap is dropped this tick.
             var guardCount = 0
-            while remaining > 0 && guardCount < 1 {
+            while remaining > 0 && guardCount < 4 {
                 guardCount += 1
                 var block = currentBlock
                 if remaining >= block.hp {

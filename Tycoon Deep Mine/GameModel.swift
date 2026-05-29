@@ -48,21 +48,21 @@ enum DDMOre: Int, CaseIterable, Codable {
     var baseValue: Double {
         switch self {
         case .coal: return 1
-        case .copper: return 4
-        case .tin: return 11
-        case .iron: return 28
-        case .silver: return 72
-        case .gold: return 180
-        case .ruby: return 460
-        case .emerald: return 1_200
-        case .sapphire: return 3_100
-        case .diamond: return 8_000
-        case .mithril: return 21_000
-        case .obsidian: return 55_000
-        case .adamantite: return 143_000
-        case .voidstone: return 372_000
-        case .starmetal: return 970_000
-        case .aetherium: return 2_500_000
+        case .copper: return 5
+        case .tin: return 20
+        case .iron: return 75
+        case .silver: return 260
+        case .gold: return 900
+        case .ruby: return 3_200
+        case .emerald: return 11_000
+        case .sapphire: return 38_000
+        case .diamond: return 130_000
+        case .mithril: return 440_000
+        case .obsidian: return 1_500_000
+        case .adamantite: return 5_000_000
+        case .voidstone: return 17_000_000
+        case .starmetal: return 58_000_000
+        case .aetherium: return 200_000_000
         }
     }
 
