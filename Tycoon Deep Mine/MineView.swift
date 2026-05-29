@@ -22,13 +22,18 @@ struct MineView: View {
     // MARK: - Top bar (gold + depth + gems)
 
     private var topBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             statChip(icon: AnyView(DDMCoinShape(size: 22)),
                      value: DDMFormat.number(store.save.gold),
                      label: "Gold")
             statChip(icon: AnyView(DDMGemBadge(size: 20)),
                      value: "\(store.save.gems)",
                      label: "Gems")
+            if store.save.cores > 0 || store.save.lifetimeCores > 0 {
+                statChip(icon: AnyView(DDMCoreShape().fill(DDMPalette.accent).frame(width: 20, height: 20)),
+                         value: "\(store.save.cores)",
+                         label: "Cores")
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
@@ -216,7 +221,7 @@ struct MineView: View {
         VStack(spacing: 10) {
             // tap / dps row
             HStack(spacing: 10) {
-                miniStat("Tap", DDMFormat.number(store.tapDamage), DDMPalette.accent)
+                miniStat("Tap", DDMFormat.number(store.tapDamageTotal), DDMPalette.accent)
                 miniStat("Auto/s", DDMFormat.number(store.autoDPS), DDMPalette.gem)
                 miniStat("Gold/s", DDMFormat.number(store.goldPerSecond), DDMPalette.gold)
             }

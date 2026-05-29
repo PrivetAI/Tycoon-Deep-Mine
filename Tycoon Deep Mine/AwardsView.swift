@@ -47,6 +47,14 @@ struct AwardsView: View {
                 divider
                 statRow("Collapses", "\(store.save.totalCollapses)")
                 divider
+                statRow("Cores", "\(store.save.cores)")
+                divider
+                statRow("Tectonic Shifts", "\(store.save.totalShifts)")
+                divider
+                statRow("Research Points", DDMFormat.number(store.save.research))
+                divider
+                statRow("Bars Sold (value)", DDMFormat.number(store.save.lifetimeBarsValue))
+                divider
                 statRow("Bedrock Gates", "\(store.save.bossesDefeated)")
                 divider
                 statRow("Geodes Found", "\(store.save.treasuresFound)")

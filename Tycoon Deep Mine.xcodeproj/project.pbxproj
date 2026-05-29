@@ -25,6 +25,11 @@
 		A1000003000000000000016 /* WebPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000016 /* WebPanel.swift */; };
 		A1000003000000000000017 /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000017 /* LoadingScreen.swift */; };
 		A1000003000000000000018 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000018 /* Assets.xcassets */; };
+		A1000003000000000000020 /* Systems.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000020 /* Systems.swift */; };
+		A1000003000000000000021 /* SmelterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000021 /* SmelterView.swift */; };
+		A1000003000000000000022 /* ResearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000022 /* ResearchView.swift */; };
+		A1000003000000000000023 /* CoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000023 /* CoresView.swift */; };
+		A1000003000000000000024 /* MasteryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003000000000000024 /* MasteryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +52,11 @@
 		B1000003000000000000017 /* LoadingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
 		B1000003000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000003000000000000019 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1000003000000000000020 /* Systems.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Systems.swift; sourceTree = "<group>"; };
+		B1000003000000000000021 /* SmelterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmelterView.swift; sourceTree = "<group>"; };
+		B1000003000000000000022 /* ResearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchView.swift; sourceTree = "<group>"; };
+		B1000003000000000000023 /* CoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoresView.swift; sourceTree = "<group>"; };
+		B1000003000000000000024 /* MasteryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MasteryView.swift; sourceTree = "<group>"; };
 		C1000003000000000000001 /* Tycoon Deep Mine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Tycoon Deep Mine.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -89,6 +99,11 @@
 				B1000003000000000000015 /* HowToPlayView.swift */,
 				B1000003000000000000016 /* WebPanel.swift */,
 				B1000003000000000000017 /* LoadingScreen.swift */,
+				B1000003000000000000020 /* Systems.swift */,
+				B1000003000000000000021 /* SmelterView.swift */,
+				B1000003000000000000022 /* ResearchView.swift */,
+				B1000003000000000000023 /* CoresView.swift */,
+				B1000003000000000000024 /* MasteryView.swift */,
 				B1000003000000000000018 /* Assets.xcassets */,
 				B1000003000000000000019 /* Info.plist */,
 			);
@@ -189,6 +204,11 @@
 				A1000003000000000000015 /* HowToPlayView.swift in Sources */,
 				A1000003000000000000016 /* WebPanel.swift in Sources */,
 				A1000003000000000000017 /* LoadingScreen.swift in Sources */,
+				A1000003000000000000020 /* Systems.swift in Sources */,
+				A1000003000000000000021 /* SmelterView.swift in Sources */,
+				A1000003000000000000022 /* ResearchView.swift in Sources */,
+				A1000003000000000000023 /* CoresView.swift in Sources */,
+				A1000003000000000000024 /* MasteryView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -316,7 +336,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGN_IDENTITY = "";
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -348,7 +368,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGN_IDENTITY = "";
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;

@@ -43,41 +43,57 @@ final class DDMStore: ObservableObject {
     }
 
     // --- Gem prestige multiplier (the core of the loop) ---
-    // Gems give a STRONG global multiplier to BOTH damage and gold so each collapse
-    // makes re-descent clearly faster. Tuned for roughly 2-4x per healthy cycle.
-    // Curve: 1 + gems^0.85 * 0.55  (diminishing but always meaningful).
+    // Gems give a global multiplier to BOTH damage and gold so each collapse makes
+    // re-descent faster. TEMPERED vs the old curve (was 1 + g^0.85*0.55) so income no
+    // longer outruns the steeper cost curves: 1 + g^0.78 * 0.42 — still always meaningful,
+    // but a single early collapse won't trivialise the next run's upgrades.
     var gemMultiplier: Double {
         let g = Double(max(0, save.gems))
         if g <= 0 { return 1.0 }
-        let m = 1.0 + pow(g, 0.85) * 0.55
+        let m = 1.0 + pow(g, 0.78) * 0.42
         return m.isFinite ? m : 1.0
     }
 
-    // Permanent yield multiplier from gems + global yield boost (applies to GOLD).
+    // Permanent yield multiplier from gems + global yield boost + meta/research mults
+    // (applies to GOLD).
     var yieldMultiplier: Double {
-        let boost = 1.0 + Double(globalLevel(.yieldBoost)) * 0.15  // +15% per level
-        let m = gemMultiplier * boost
+        let boost = 1.0 + Double(globalLevel(.yieldBoost)) * 0.12  // +12% per level
+        let m = gemMultiplier * boost * metaGoldMultiplier * researchGoldMultiplier
         return m.isFinite ? m : 1.0
     }
 
-    // Damage multiplier from gems + yield boost (applies to DAMAGE — tap & auto).
+    // Damage multiplier from gems + yield boost + meta/research mults (tap & auto).
     var damageMultiplier: Double {
-        let boost = 1.0 + Double(globalLevel(.yieldBoost)) * 0.15
-        let m = gemMultiplier * boost
+        let boost = 1.0 + Double(globalLevel(.yieldBoost)) * 0.12
+        let m = gemMultiplier * boost * metaDamageMultiplier * researchDamageMultiplier * depthDamageMultiplier
         return m.isFinite ? m : 1.0
     }
 
-    // Multiplicative "milestone" bonus: x2 every 25 levels (classic-clicker style).
+    // Multiplicative "milestone" bonus: x2 every 35 levels (was 25 — slower so the
+    // doubling can't snowball past the cost curve).
     private func milestoneScale(_ level: Int) -> Double {
-        let steps = level / 25
+        let steps = level / 35
         return pow(2.0, Double(steps))
     }
 
-    // Tap (pickaxe) damage. Base per-level term * x2-every-25 * gem damage mult.
+    // Number of strikes a single tap delivers (Multi-Strike).
+    var tapStrikes: Int {
+        1 + upgradeLevel(.multiTap)
+    }
+
+    // Per-strike tap (pickaxe) damage. Base per-level term * x2-every-35 * damage mult.
+    // Slightly softer per-level slope than before (was +2/level) to match steeper costs.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 2.0
+        let base = 1.0 + Double(lvl) * 1.6
         let d = base * milestoneScale(lvl) * damageMultiplier
+        return d.isFinite ? max(1, d) : 1
+    }
+
+    // Full damage of one tap action (all strikes combined). Used for display only —
+    // strikes are applied individually so HP/clears stay consistent.
+    var tapDamageTotal: Double {
+        let d = tapDamage * Double(tapStrikes)
         return d.isFinite ? max(1, d) : 1
     }
 
@@ -90,7 +106,7 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(0, d) : 0
     }
 
-    // Auto drill damage per second. Drill count & speed each carry x2-every-25 milestones.
+    // Auto drill damage per second. Drill count & speed each carry x2-every-35 milestones.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
         let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 2.0
@@ -98,34 +114,190 @@ final class DDMStore: ObservableObject {
         let speedLvl = upgradeLevel(.drillSpeed)
         let perDrill = 1.2 * milestoneScale(countLvl)
         let speed = (1.0 + Double(speedLvl) * 0.30) * milestoneScale(speedLvl)
-        let dps = count * perDrill * speed * damageMultiplier
+        let gearing = 1.0 + Double(upgradeLevel(.drillEfficiency)) * 0.15
+        let turbo = 1.0 + Double(techLevel(.turboDrills)) * 0.08
+        let dps = count * perDrill * speed * gearing * turbo * damageMultiplier
         return dps.isFinite ? max(0, dps) : 0
     }
 
-    // Ore sell value multiplier.
+    // Auto-tapper: mechanical arm that delivers tap-strength hits automatically.
+    // Each level adds 0.5 auto-taps/second; meta perk can add more.
+    var autoTapRate: Double {
+        let lvl = upgradeLevel(.autoTapper)
+        let metaBonus = Double(metaLevel(.autoArm)) * 0.5
+        let r = Double(lvl) * 0.5 + metaBonus
+        return r.isFinite ? max(0, r) : 0
+    }
+
+    var autoTapDPS: Double {
+        let d = autoTapRate * tapDamage
+        return d.isFinite ? max(0, d) : 0
+    }
+
+    // Depth-scaling damage multiplier (Pressure Drill): +X% per level scaled by depth band.
+    var depthDamageMultiplier: Double {
+        let lvl = upgradeLevel(.depthScaling)
+        if lvl <= 0 { return 1.0 }
+        // each level grants +0.6% per 100 m of current depth (capped to keep finite).
+        let depthBands = min(200.0, Double(max(0, save.depth)) / 100.0)
+        let m = 1.0 + Double(lvl) * 0.006 * depthBands
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    // Gold-find bonus (Prospect Sense + meta).
+    var goldFindMultiplier: Double {
+        let m = 1.0 + Double(upgradeLevel(.goldFind)) * 0.08 + Double(metaLevel(.goldVein)) * 0.10
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    // Ore sell value multiplier (raw ore). Softer grader step (was 0.25) to match costs.
     var oreValueMultiplier: Double {
-        let grader = 1.0 + Double(upgradeLevel(.oreValue)) * 0.25
-        let refiner = 1.0 + Double(upgradeLevel(.refiner)) * 0.20
-        let m = grader * refiner * yieldMultiplier
+        let grader = 1.0 + Double(upgradeLevel(.oreValue)) * 0.20
+        let refiner = 1.0 + Double(upgradeLevel(.refiner)) * 0.18
+        let m = grader * refiner * yieldMultiplier * goldFindMultiplier
         return m.isFinite ? m : 1.0
     }
 
-    // Ore drop amount multiplier (ore magnet global).
-    var oreAmountMultiplier: Double {
-        1.0 + Double(globalLevel(.oreMagnet)) * 0.20
+    // Per-ore mastery value multiplier for a specific ore.
+    func oreMasteryMultiplier(_ ore: DDMOre) -> Double {
+        let lvl = save.oreMastery[ore.rawValue] ?? 0
+        let m = 1.0 + Double(lvl) * 0.15
+        return m.isFinite ? max(1.0, m) : 1.0
     }
 
-    // Treasure / geode find chance multiplier (prospector's eye). Extra finds on top
-    // of the deterministic base geodes.
+    // Effective per-unit sell value of an ore (raw), including mastery.
+    func oreUnitValue(_ ore: DDMOre) -> Double {
+        let v = ore.baseValue * oreValueMultiplier * oreMasteryMultiplier(ore)
+        return v.isFinite ? max(0, v) : 0
+    }
+
+    // MARK: - Meta (Cores) derived stats
+
+    func metaLevel(_ kind: DDMMetaKind) -> Int {
+        save.metaTree[kind.rawValue] ?? 0
+    }
+
+    // Global gold multiplier from the meta-tree (persists through collapse).
+    var metaGoldMultiplier: Double {
+        let m = 1.0 + Double(metaLevel(.goldVein)) * 0.10
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    var metaDamageMultiplier: Double {
+        let m = 1.0 + Double(metaLevel(.forceCore)) * 0.10
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    // Bonus to gems gained per collapse.
+    var metaGemMultiplier: Double {
+        let m = 1.0 + Double(metaLevel(.gemResonance)) * 0.08
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    // MARK: - Research derived stats
+
+    func techLevel(_ kind: DDMTechKind) -> Int {
+        save.techs[kind.rawValue] ?? 0
+    }
+
+    var researchDamageMultiplier: Double {
+        let sharp = 1.0 + Double(techLevel(.sharpTools)) * 0.06
+        let turbo = 1.0 // turbo applies to auto only (handled in autoDPS gearing below)
+        let m = sharp * turbo
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    var researchGoldMultiplier: Double {
+        let assay = 1.0 + Double(techLevel(.assayers)) * 0.06
+        return assay.isFinite ? max(1.0, assay) : 1.0
+    }
+
+    // Research point earn-rate multiplier (globals + meta + Field Lab).
+    var researchRateMultiplier: Double {
+        let lab = 1.0 + Double(globalLevel(.researchRate)) * 0.20
+        let know = 1.0 + Double(metaLevel(.research)) * 0.15
+        let m = lab * know
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    // Upgrade-cost discount from Lean Engineering (diminishing, capped ~ -36%).
+    var upgradeCostMultiplier: Double {
+        let lvl = techLevel(.efficiency)
+        if lvl <= 0 { return 1.0 }
+        let disc = 1.0 - pow(0.99, Double(lvl)) // approaches 1 slowly; scale it
+        let scaled = min(0.36, disc * 4.0)      // cap discount at 36%
+        let m = 1.0 - scaled
+        return m.isFinite ? max(0.5, m) : 1.0
+    }
+
+    // MARK: - Smelter derived stats
+
+    func smelterLevel(_ kind: DDMSmelterKind) -> Int {
+        save.smelterUpgrades[kind.rawValue] ?? 0
+    }
+
+    // Is the smelter unlocked at all? (any rate level)
+    var hasSmelter: Bool { smelterLevel(.rate) > 0 }
+
+    // Ore units fed into the furnace per second.
+    var smeltRate: Double {
+        let lvl = smelterLevel(.rate)
+        if lvl <= 0 { return 0 }
+        let base = Double(lvl) * 1.5
+        let speed = 1.0 + Double(globalLevel(.smeltSpeed)) * 0.15 + Double(techLevel(.smelting)) * 0.20
+        let r = base * speed
+        return r.isFinite ? max(0, r) : 0
+    }
+
+    // Bars produced per ore unit smelted (Casting Molds).
+    var barYieldPerOre: Double {
+        let m = 1.0 + Double(smelterLevel(.batch)) * 0.08
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    // Value multiplier applied to a bar vs the raw ore unit value.
+    // Bars are worth a large multiple of raw ore (the whole point of smelting), boosted
+    // by Bar Purity, the Forge Heart meta perk and the Assay tech.
+    func barUnitValue(_ ore: DDMOre) -> Double {
+        let purity = 1.0 + Double(smelterLevel(.barValue)) * 0.12
+        let forge = 1.0 + Double(metaLevel(.smelterCore)) * 0.12
+        // base bar premium: 3.5x raw ore value
+        let v = oreUnitValue(ore) * 3.5 * purity * forge
+        return v.isFinite ? max(0, v) : 0
+    }
+
+    var totalHeldBars: Double {
+        save.bars.values.reduce(0, +)
+    }
+
+    var heldBarsValue: Double {
+        var v: Double = 0
+        for (raw, count) in save.bars where count > 0 {
+            if let ore = DDMOre(rawValue: raw) {
+                v += count * barUnitValue(ore)
+            }
+        }
+        return v
+    }
+
+    // Ore drop amount multiplier (ore magnet global + Vein Mapping tech).
+    var oreAmountMultiplier: Double {
+        let m = 1.0 + Double(globalLevel(.oreMagnet)) * 0.20 + Double(techLevel(.oreRichness)) * 0.10
+        return m.isFinite ? max(1.0, m) : 1.0
+    }
+
+    // Treasure / geode find chance multiplier (prospector's eye + Deep Scan). Extra finds
+    // on top of the deterministic base geodes.
     var treasureLuckBonus: Double {
-        Double(globalLevel(.treasureLuck)) * 0.25
+        Double(globalLevel(.treasureLuck)) * 0.25 + Double(techLevel(.deepScan)) * 0.12
     }
 
     // Cart auto-collect & auto-sell rate (ore units / second processed). 0 = manual only.
     var cartRate: Double {
         let lvl = upgradeLevel(.cart)
         if lvl <= 0 { return 0 }
-        let r = Double(lvl) * 1.5 + 1.0
+        let logistics = 1.0 + Double(techLevel(.logistics)) * 0.25
+        let r = (Double(lvl) * 1.5 + 1.0) * logistics
         return r.isFinite ? r : 0
     }
 
@@ -151,21 +323,23 @@ final class DDMStore: ObservableObject {
         return baseHours * 3600.0
     }
 
-    // Estimated gold/sec from auto systems (for display).
+    // Estimated gold/sec from auto systems (for display + offline remainder estimate).
     var goldPerSecond: Double {
         guard hasAutoSell else { return 0 }
         // approximate: dps clears HP -> blocks/sec -> ore value avg
         let hp = max(1.0, currentBlock.maxHP)
-        let blocksPerSec = autoDPS / hp
-        let perBlockGold = estimatedBlockGold(currentBlock)
+        let blocksPerSec = (autoDPS + autoTapDPS) / hp
+        var perBlockGold = estimatedBlockGold(currentBlock)
+        // Smelting roughly multiplies ore value (bars worth ~3.5x); reflect it in the rate.
+        if hasSmelter { perBlockGold *= 1.8 }
         let g = blocksPerSec * perBlockGold
         return g.isFinite ? max(0, g) : 0
     }
 
     private func estimatedBlockGold(_ b: DDMBlock) -> Double {
-        var g = b.rubbleGold * yieldMultiplier
+        var g = b.rubbleGold * yieldMultiplier * goldFindMultiplier
         if let ore = b.oreType {
-            g += b.oreAmount * ore.baseValue * oreValueMultiplier
+            g += b.oreAmount * oreUnitValue(ore)
         }
         return g
     }
@@ -185,22 +359,29 @@ final class DDMStore: ObservableObject {
 
     func tapDig() {
         save.totalTaps += 1
-        var dmg = tapDamage
+        let strikes = tapStrikes
+        var perStrike = tapDamage
         // Dynamite burst lands extra hard on bedrock bosses (and helps everywhere).
         if currentBlock.isBoss {
-            dmg += burstBonusDamage * 3.0
+            perStrike += burstBonusDamage * 3.0
         } else {
-            dmg += burstBonusDamage
+            perStrike += burstBonusDamage
         }
         var crit = false
         if critChance > 0 {
             var rng = DDMRandom(seed: ddmSeed(save.totalTaps, save.depth &+ 7))
             if rng.chance(critChance) {
-                dmg *= critMultiplier
+                perStrike *= critMultiplier
                 crit = true
             }
         }
-        applyDamage(dmg, manual: true, crit: crit)
+        // Show the combined hit, but apply each strike individually so a multi-strike tap
+        // can roll over into the next block cleanly.
+        let total = perStrike * Double(max(1, strikes))
+        addFloatingHit(amount: total, crit: crit)
+        for _ in 0..<max(1, strikes) {
+            applyDamage(perStrike, manual: false, crit: crit)
+        }
         if settings.hapticsOn {
             DDMHaptics.tap()
         }
@@ -208,18 +389,19 @@ final class DDMStore: ObservableObject {
         throttledSaveTick(force: false)
     }
 
+    private func addFloatingHit(amount: Double, crit: Bool) {
+        let hit = DDMFloatingHit(id: UUID(), text: crit ? "CRIT \(DDMFormat.number(amount))" : DDMFormat.number(amount), crit: crit)
+        floatingHits.append(hit)
+        if floatingHits.count > 6 { floatingHits.removeFirst(floatingHits.count - 6) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+            self?.floatingHits.removeAll { $0.id == hit.id }
+        }
+    }
+
     private func applyDamage(_ amount: Double, manual: Bool, crit: Bool) {
         guard amount > 0 else { return }
         var block = currentBlock
         block.hp -= amount
-        if manual {
-            let hit = DDMFloatingHit(id: UUID(), text: crit ? "CRIT \(DDMFormat.number(amount))" : DDMFormat.number(amount), crit: crit)
-            floatingHits.append(hit)
-            if floatingHits.count > 6 { floatingHits.removeFirst(floatingHits.count - 6) }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
-                self?.floatingHits.removeAll { $0.id == hit.id }
-            }
-        }
         if block.hp <= 0 {
             clearBlock(block)
         } else {
@@ -301,6 +483,28 @@ final class DDMStore: ObservableObject {
             addGold(r.gold * yieldMultiplier)
             save.gems += r.gems
         }
+        accrueResearch()
+    }
+
+    // Research Points accrue from NEW deepest depth reached (a banked basis so re-digging
+    // already-explored depth pays nothing — no farming exploit). Closed-form, O(1).
+    private func accrueResearch() {
+        let basis = max(0, save.maxDepth)
+        guard basis > save.researchClaimedDepth else { return }
+        // RP for total depth = depth^1.25 * 0.5 ; pay only the delta since last basis.
+        let total = pow(Double(basis), 1.25) * 0.5
+        let prior = pow(Double(max(0, save.researchClaimedDepth)), 1.25) * 0.5
+        var gained = (total - prior) * researchRateMultiplier
+        if !gained.isFinite || gained < 0 { gained = 0 }
+        if gained > 0 {
+            var r = save.research + gained
+            if !r.isFinite || r > 1e300 { r = 1e300 }
+            save.research = r
+            var lr = save.lifetimeResearch + gained
+            if !lr.isFinite || lr > 1e300 { lr = 1e300 }
+            save.lifetimeResearch = lr
+        }
+        save.researchClaimedDepth = basis
     }
 
     // MARK: - Selling
@@ -309,7 +513,7 @@ final class DDMStore: ObservableObject {
         var earned: Double = 0
         for (raw, count) in save.oreCounts where count > 0 {
             if let ore = DDMOre(rawValue: raw) {
-                earned += count * ore.baseValue * oreValueMultiplier
+                earned += count * oreUnitValue(ore)
             }
         }
         save.oreCounts = [:]
@@ -325,7 +529,7 @@ final class DDMStore: ObservableObject {
     func sell(_ ore: DDMOre) {
         let count = save.oreCounts[ore.rawValue] ?? 0
         guard count > 0 else { return }
-        let earned = count * ore.baseValue * oreValueMultiplier
+        let earned = count * oreUnitValue(ore)
         save.oreCounts[ore.rawValue] = 0
         addGold(earned)
         save.lifetimeOreSold += earned
@@ -337,7 +541,7 @@ final class DDMStore: ObservableObject {
         var v: Double = 0
         for (raw, count) in save.oreCounts where count > 0 {
             if let ore = DDMOre(rawValue: raw) {
-                v += count * ore.baseValue * oreValueMultiplier
+                v += count * oreUnitValue(ore)
             }
         }
         return v
@@ -363,11 +567,14 @@ final class DDMStore: ObservableObject {
         let def = DDMUpgradeDef.def(kind)
         let lvl = upgradeLevel(kind)
         if lvl >= def.maxLevel { return false }
-        return save.gold >= def.cost(at: lvl)
+        return save.gold >= cost(kind)
     }
 
+    // Gold-upgrade cost with the Lean Engineering research discount applied.
     func cost(_ kind: DDMUpgradeKind) -> Double {
-        DDMUpgradeDef.def(kind).cost(at: upgradeLevel(kind))
+        let raw = DDMUpgradeDef.def(kind).cost(at: upgradeLevel(kind))
+        let c = (raw * upgradeCostMultiplier).rounded()
+        return c.isFinite ? max(1, c) : raw
     }
 
     func buy(_ kind: DDMUpgradeKind) {
@@ -403,6 +610,122 @@ final class DDMStore: ObservableObject {
         objectWillChange.send()
     }
 
+    // --- Research techs (bought with Research Points) ---
+
+    func techCost(_ kind: DDMTechKind) -> Double {
+        DDMTechDef.def(kind).cost(at: techLevel(kind))
+    }
+
+    func canBuyTech(_ kind: DDMTechKind) -> Bool {
+        let def = DDMTechDef.def(kind)
+        let lvl = techLevel(kind)
+        if lvl >= def.maxLevel { return false }
+        return save.research >= techCost(kind)
+    }
+
+    func buyTech(_ kind: DDMTechKind) {
+        guard canBuyTech(kind) else { return }
+        save.research -= techCost(kind)
+        if save.research < 0 { save.research = 0 }
+        save.techs[kind.rawValue] = techLevel(kind) + 1
+        if settings.hapticsOn { DDMHaptics.tap() }
+        checkAchievements()
+        throttledSaveTick(force: true)
+        objectWillChange.send()
+    }
+
+    // --- Smelter upgrades (bought with Gold) ---
+
+    func smelterCost(_ kind: DDMSmelterKind) -> Double {
+        DDMSmelterDef.def(kind).cost(at: smelterLevel(kind))
+    }
+
+    func canBuySmelter(_ kind: DDMSmelterKind) -> Bool {
+        let def = DDMSmelterDef.def(kind)
+        let lvl = smelterLevel(kind)
+        if lvl >= def.maxLevel { return false }
+        return save.gold >= smelterCost(kind)
+    }
+
+    func buySmelter(_ kind: DDMSmelterKind) {
+        guard canBuySmelter(kind) else { return }
+        save.gold -= smelterCost(kind)
+        if save.gold < 0 { save.gold = 0 }
+        save.smelterUpgrades[kind.rawValue] = smelterLevel(kind) + 1
+        if settings.hapticsOn { DDMHaptics.tap() }
+        checkAchievements()
+        throttledSaveTick(force: true)
+        objectWillChange.send()
+    }
+
+    // Sell all smelted bars for gold.
+    func sellAllBars() {
+        var earned: Double = 0
+        for (raw, count) in save.bars where count > 0 {
+            if let ore = DDMOre(rawValue: raw) {
+                earned += count * barUnitValue(ore)
+            }
+        }
+        save.bars = [:]
+        if earned > 0 {
+            addGold(earned)
+            save.lifetimeOreSold += earned
+            var lb = save.lifetimeBarsValue + earned
+            if !lb.isFinite || lb > 1e300 { lb = 1e300 }
+            save.lifetimeBarsValue = lb
+            if settings.hapticsOn { DDMHaptics.success() }
+        }
+        checkAchievements()
+        throttledSaveTick(force: true)
+    }
+
+    // --- Per-ore mastery (bought with Gold) ---
+
+    func oreMasteryCost(_ ore: DDMOre) -> Double {
+        DDMOreMastery.cost(ore, level: save.oreMastery[ore.rawValue] ?? 0)
+    }
+
+    func canBuyMastery(_ ore: DDMOre) -> Bool {
+        let lvl = save.oreMastery[ore.rawValue] ?? 0
+        if lvl >= DDMOreMastery.maxLevel { return false }
+        return save.gold >= oreMasteryCost(ore)
+    }
+
+    func buyMastery(_ ore: DDMOre) {
+        guard canBuyMastery(ore) else { return }
+        save.gold -= oreMasteryCost(ore)
+        if save.gold < 0 { save.gold = 0 }
+        save.oreMastery[ore.rawValue] = (save.oreMastery[ore.rawValue] ?? 0) + 1
+        if settings.hapticsOn { DDMHaptics.tap() }
+        checkAchievements()
+        throttledSaveTick(force: true)
+        objectWillChange.send()
+    }
+
+    // --- Meta perks (bought with Cores) ---
+
+    func metaCost(_ kind: DDMMetaKind) -> Int {
+        DDMMetaDef.def(kind).cost(at: metaLevel(kind))
+    }
+
+    func canBuyMeta(_ kind: DDMMetaKind) -> Bool {
+        let def = DDMMetaDef.def(kind)
+        let lvl = metaLevel(kind)
+        if lvl >= def.maxLevel { return false }
+        return save.cores >= metaCost(kind)
+    }
+
+    func buyMeta(_ kind: DDMMetaKind) {
+        guard canBuyMeta(kind) else { return }
+        save.cores -= metaCost(kind)
+        if save.cores < 0 { save.cores = 0 }
+        save.metaTree[kind.rawValue] = metaLevel(kind) + 1
+        if settings.hapticsOn { DDMHaptics.success() }
+        checkAchievements()
+        throttledSaveTick(force: true)
+        objectWillChange.send()
+    }
+
     // MARK: - Prestige (Collapse)
 
     // Gems earned from a collapse, based on THIS run's progress:
@@ -413,7 +736,7 @@ final class DDMStore: ObservableObject {
         let depthPart = pow(Double(max(0, save.runMaxDepth)) / 40.0, 1.45)
         let newOre = max(0, save.lifetimeOreSold - save.oreSoldClaimed)
         let orePart = pow(newOre / 2.0e4, 0.55)
-        let raw = depthPart + orePart
+        let raw = (depthPart + orePart) * metaGemMultiplier
         if !raw.isFinite || raw < 0 { return 0 }
         let g = Int(raw)
         return max(0, g)
@@ -421,6 +744,28 @@ final class DDMStore: ObservableObject {
 
     var canCollapse: Bool {
         pendingGems > 0
+    }
+
+    // The starting depth for a fresh run, including Shaft Head Start (gems) and the
+    // Fault Line meta perk (cores). Clamped to keep it finite.
+    var runStartDepth: Int {
+        let d = globalLevel(.startDepth) * 15 + metaLevel(.deepStart) * 40
+        return max(0, min(50_000, d))
+    }
+
+    // Free upgrade levels granted at run start by the Prepared Shaft meta perk.
+    private func applyRunHeadStart() {
+        let bonus = metaLevel(.headStart) * 5
+        if bonus > 0 {
+            save.upgrades[DDMUpgradeKind.pickaxe.rawValue] = bonus
+            save.upgrades[DDMUpgradeKind.drillCount.rawValue] = bonus
+        }
+        // Seed Vault: start with a gold stake (scales modestly with level).
+        let seedLevels = globalLevel(.startGold)
+        if seedLevels > 0 {
+            let stake = 100.0 * pow(3.0, Double(seedLevels))
+            if stake.isFinite { addGold(min(stake, 1e12)) }
+        }
     }
 
     func collapse() {
@@ -431,18 +776,73 @@ final class DDMStore: ObservableObject {
         // Bank the ore-sold counter so re-collapse without new sales gives ~0 gems.
         save.oreSoldClaimed = save.lifetimeOreSold
 
-        // Reset run state but keep gems, globals, achievements, lifetime totals.
-        let startDepth = globalLevel(.startDepth) * 15
+        resetRun()
+        if settings.hapticsOn { DDMHaptics.heavy() }
+        checkAchievements()
+        throttledSaveTick(force: true)
+        objectWillChange.send()
+    }
+
+    // Reset run-scoped state (shared by Collapse and Tectonic Shift). Keeps gems, globals,
+    // meta-tree, research, achievements and lifetime totals unless the caller clears them.
+    private func resetRun() {
+        let startDepth = runStartDepth
         save.depth = startDepth
         save.runMaxDepth = startDepth
         if startDepth > save.maxDepth { save.maxDepth = startDepth }
         save.gold = 0
         save.oreCounts = [:]
+        save.bars = [:]
         save.currentBlockHP = -1
-        // reset run upgrades (pickaxe/drills/etc.) — keep nothing run-scoped
         save.upgrades = [:]
-
+        save.smelterUpgrades = [:]   // smelter is a run-scoped gold investment
+        save.oreMastery = [:]        // mastery is a run-scoped gold investment
+        applyRunHeadStart()
         rebuildCurrentBlock()
+    }
+
+    // MARK: - Tectonic Shift (second prestige → Cores)
+
+    // Cores earned from a Shift, based on BANKED prestige progress since the last shift:
+    //   gems accumulated + collapses performed. Banked counters (gemsClaimedForCores /
+    //   collapsesClaimedForCores) make repeat shifts with no new progress give ~0 — no
+    //   farming exploit, mirroring oreSoldClaimed.
+    var pendingCores: Int {
+        let newGems = max(0, save.gems - save.gemsClaimedForCores)
+        let newCollapses = max(0, save.totalCollapses - save.collapsesClaimedForCores)
+        let gemPart = pow(Double(newGems) / 60.0, 0.62)
+        let colPart = Double(newCollapses) * 0.30
+        let raw = gemPart + colPart
+        if !raw.isFinite || raw < 0 { return 0 }
+        return max(0, Int(raw))
+    }
+
+    // Gate the shift so it can't be spammed at trivial progress.
+    var canShift: Bool {
+        pendingCores >= 1 && (save.gems - save.gemsClaimedForCores) >= 60
+    }
+
+    func tectonicShift() {
+        let gained = pendingCores
+        guard gained >= 1, canShift else { return }
+        save.cores += gained
+        var lc = save.lifetimeCores + gained
+        if lc < 0 { lc = save.lifetimeCores }
+        save.lifetimeCores = lc
+        save.totalShifts += 1
+
+        // A Shift clears gems + gem globals + the whole run, but keeps Cores, the meta-tree,
+        // research + techs, achievements and lifetime totals.
+        save.gems = 0
+        save.globals = [:]
+        // Bank the conversion basis to the POST-shift values (gems = 0, collapses = current)
+        // so future gem/collapse accumulation counts toward the next shift immediately —
+        // no need to re-earn the spent total, and repeat shifts at zero progress give ~0.
+        save.gemsClaimedForCores = save.gems
+        save.collapsesClaimedForCores = save.totalCollapses
+        save.oreSoldClaimed = save.lifetimeOreSold // gems reset → next collapse basis fresh
+        resetRun()
+
         if settings.hapticsOn { DDMHaptics.heavy() }
         checkAchievements()
         throttledSaveTick(force: true)
@@ -475,10 +875,11 @@ final class DDMStore: ObservableObject {
         }
     }
 
-    // Advance auto-dig and auto-sell by dt seconds.
+    // Advance auto-dig, auto-tap, smelting and auto-sell by dt seconds.
     private func autoStep(_ dt: Double) {
         guard dt > 0 else { return }
-        let dps = autoDPS
+        // Auto-dig (drills) + auto-tap arm both feed the damage budget.
+        let dps = autoDPS + autoTapDPS
         if dps > 0 {
             var remaining = dps * dt
             // apply across possibly multiple block clears
@@ -505,14 +906,65 @@ final class DDMStore: ObservableObject {
             }
         }
 
-        // Cart auto-sell
-        if hasAutoSell && totalHeldOre > 0 {
-            autoSellStep(dt)
+        // Smelter: convert raw ore → bars (consumes ore the cart would otherwise sell raw).
+        if hasSmelter && totalHeldOre > 0 {
+            smeltStep(dt)
+        }
+
+        // Cart auto-sell (ore + bars)
+        if hasAutoSell {
+            if totalHeldOre > 0 { autoSellStep(dt) }
+            if totalHeldBars > 0 { autoSellBarsStep(dt) }
+        }
+    }
+
+    // Feed raw ore into the furnace, producing bars. Smelts richest ore first so the
+    // valuable tiers get the premium. Bounded by smeltRate * dt.
+    private func smeltStep(_ dt: Double) {
+        let capacity = smeltRate * dt
+        guard capacity > 0 else { return }
+        var remaining = capacity
+        let yield = barYieldPerOre
+        for raw in save.oreCounts.keys.sorted(by: >) {
+            let count = save.oreCounts[raw] ?? 0
+            if count <= 0 { continue }
+            let take = min(count, remaining)
+            save.oreCounts[raw] = count - take
+            let produced = take * yield
+            save.bars[raw] = (save.bars[raw] ?? 0) + produced
+            remaining -= take
+            if remaining <= 0 { break }
+        }
+    }
+
+    private func autoSellBarsStep(_ dt: Double) {
+        // Bars sell at the same cart throughput as ore.
+        let capacity = cartRate * dt
+        guard capacity > 0 else { return }
+        var remaining = capacity
+        var earned: Double = 0
+        for raw in save.bars.keys.sorted() {
+            let count = save.bars[raw] ?? 0
+            if count <= 0 { continue }
+            let take = min(count, remaining)
+            if let ore = DDMOre(rawValue: raw) {
+                earned += take * barUnitValue(ore)
+            }
+            save.bars[raw] = count - take
+            remaining -= take
+            if remaining <= 0 { break }
+        }
+        if earned > 0 {
+            addGold(earned)
+            save.lifetimeOreSold += earned
+            var lb = save.lifetimeBarsValue + earned
+            if !lb.isFinite || lb > 1e300 { lb = 1e300 }
+            save.lifetimeBarsValue = lb
         }
     }
 
     private func awardBlockContents(_ block: DDMBlock) {
-        addGold(block.rubbleGold * yieldMultiplier)
+        addGold(block.rubbleGold * yieldMultiplier * goldFindMultiplier)
         if let ore = block.oreType, block.oreAmount > 0 {
             mineOre(ore, amount: block.oreAmount)
         }
@@ -530,7 +982,7 @@ final class DDMStore: ObservableObject {
             if count <= 0 { continue }
             let take = min(count, remaining)
             if let ore = DDMOre(rawValue: raw) {
-                earned += take * ore.baseValue * oreValueMultiplier
+                earned += take * oreUnitValue(ore)
             }
             save.oreCounts[raw] = count - take
             remaining -= take
@@ -559,7 +1011,8 @@ final class DDMStore: ObservableObject {
         let capped = min(elapsed, offlineCapSeconds)
         elapsed = capped
 
-        let dps = autoDPS
+        // Drills + the permanent auto-tap arm both progress offline.
+        let dps = autoDPS + autoTapDPS
         guard dps > 0 else {
             save.lastActive = now
             return
@@ -602,10 +1055,13 @@ final class DDMStore: ObservableObject {
             let est = goldPerSecond * timeLeft
             if est.isFinite && est > 0 { addGold(est) }
         }
-        // Auto-sell remaining if cart present (so offline gold reflects sales)
+        // Auto-sell remaining if cart present (so offline gold reflects sales).
         if hasAutoSell {
-            // flush held ore from offline mining into gold
+            // If a smelter is running, convert held ore to bars first (single O(ore-types)
+            // pass — bounded), then flush both ore and bars into gold.
+            if hasSmelter { smeltAllSilent() }
             sellAllSilent()
+            sellBarsSilent()
         }
 
         let goldGained = max(0, save.gold - goldBefore)
@@ -629,13 +1085,39 @@ final class DDMStore: ObservableObject {
         var earned: Double = 0
         for (raw, count) in save.oreCounts where count > 0 {
             if let ore = DDMOre(rawValue: raw) {
-                earned += count * ore.baseValue * oreValueMultiplier
+                earned += count * oreUnitValue(ore)
             }
         }
         save.oreCounts = [:]
         if earned > 0 {
             addGold(earned)
             save.lifetimeOreSold += earned
+        }
+    }
+
+    // Convert ALL held ore to bars in one bounded pass (offline flush only).
+    private func smeltAllSilent() {
+        let yield = barYieldPerOre
+        for (raw, count) in save.oreCounts where count > 0 {
+            save.bars[raw] = (save.bars[raw] ?? 0) + count * yield
+        }
+        save.oreCounts = [:]
+    }
+
+    private func sellBarsSilent() {
+        var earned: Double = 0
+        for (raw, count) in save.bars where count > 0 {
+            if let ore = DDMOre(rawValue: raw) {
+                earned += count * barUnitValue(ore)
+            }
+        }
+        save.bars = [:]
+        if earned > 0 {
+            addGold(earned)
+            save.lifetimeOreSold += earned
+            var lb = save.lifetimeBarsValue + earned
+            if !lb.isFinite || lb > 1e300 { lb = 1e300 }
+            save.lifetimeBarsValue = lb
         }
     }
 

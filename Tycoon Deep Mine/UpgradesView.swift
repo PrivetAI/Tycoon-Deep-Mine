@@ -9,6 +9,7 @@ struct UpgradesView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     goldHeader
+                    systemsLinks
                     ForEach(DDMUpgradeDef.all) { def in
                         UpgradeRow(def: def)
                     }
@@ -21,6 +22,54 @@ struct UpgradesView: View {
             }
         }
         .navigationBarTitle("Upgrades", displayMode: .inline)
+    }
+
+    private var systemsLinks: some View {
+        VStack(spacing: 10) {
+            NavigationLink(destination: SmelterView()) {
+                systemRow(title: "Smelter", subtitle: store.hasSmelter ? "Refining ore → bars" : "Refine ore into valuable bars",
+                          value: store.hasSmelter ? "\(DDMFormat.number(store.smeltRate))/s" : "Off",
+                          color: DDMPalette.amberDeep)
+            }
+            .buttonStyle(.plain)
+            NavigationLink(destination: ResearchView()) {
+                systemRow(title: "Research", subtitle: "Spend Research Points on the tech tree",
+                          value: "\(DDMFormat.number(store.save.research)) RP",
+                          color: DDMPalette.gemDeep)
+            }
+            .buttonStyle(.plain)
+            NavigationLink(destination: MasteryView()) {
+                systemRow(title: "Ore Mastery", subtitle: "Raise the value of each ore type",
+                          value: "\(masteryCount) ores",
+                          color: DDMPalette.accent)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var masteryCount: Int {
+        DDMOre.allCases.filter { (store.save.oreMinedTotals[$0.rawValue] ?? 0) > 0 }.count
+    }
+
+    private func systemRow(title: String, subtitle: String, value: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundColor(DDMPalette.textPrimary)
+                Text(subtitle)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(DDMPalette.textSecondary)
+            }
+            Spacer(minLength: 4)
+            Text(value)
+                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                .foregroundColor(color)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            DDMChevron(color: DDMPalette.textMuted, size: 18)
+        }
+        .padding(14)
+        .ddmPanel()
     }
 
     private var goldHeader: some View {
@@ -123,26 +172,28 @@ struct UpgradeRow: View {
         switch def.kind {
         case .pickaxe:
             DDMPickaxeShape(color: DDMPalette.accentDeep, handle: DDMPalette.dirt, size: 30)
-        case .drillCount, .drillSpeed:
+        case .drillCount, .drillSpeed, .drillEfficiency:
             DDMTabUpgradeIcon(color: DDMPalette.gemDeep, size: 26)
-        case .oreValue, .refiner:
+        case .oreValue, .refiner, .goldFind:
             DDMCoinShape(size: 28)
         case .cart:
             DDMOreChunk(color: DDMPalette.amberDeep, size: 26)
         case .elevator:
             DDMChevron(color: DDMPalette.accentDeep, size: 26)
                 .rotationEffect(.degrees(90))
-        case .dynamite:
+        case .dynamite, .multiTap, .depthScaling:
             DDMBurstShape()
                 .fill(DDMPalette.danger)
                 .frame(width: 26, height: 26)
+        case .autoTapper:
+            DDMPickaxeShape(color: DDMPalette.gemDeep, handle: DDMPalette.gemDeep, size: 28)
         }
     }
 
     private func effectText(level: Int) -> String {
         switch def.kind {
         case .pickaxe:
-            return "Tap damage: \(DDMFormat.number(store.tapDamage))"
+            return "Tap damage: \(DDMFormat.number(store.tapDamageTotal))"
         case .drillCount:
             return "Drills: \(level + store.globalLevel(.autoStart) * 2)"
         case .drillSpeed:
@@ -157,6 +208,16 @@ struct UpgradeRow: View {
             return "Refining bonus active"
         case .dynamite:
             return level > 0 ? "Burst dmg: +\(DDMFormat.number(store.burstBonusDamage))" : "No burst charge yet"
+        case .multiTap:
+            return "Strikes per tap: \(store.tapStrikes)"
+        case .autoTapper:
+            return store.autoTapRate > 0 ? "Auto taps: \(String(format: "%.1f", store.autoTapRate))/s" : "No auto-tapper yet"
+        case .depthScaling:
+            return level > 0 ? "Depth damage x\(String(format: "%.2f", store.depthDamageMultiplier))" : "Scales damage with depth"
+        case .goldFind:
+            return "Gold find x\(String(format: "%.2f", store.goldFindMultiplier))"
+        case .drillEfficiency:
+            return "Auto dmg/s: \(DDMFormat.number(store.autoDPS))"
         }
     }
 }

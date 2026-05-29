@@ -22,6 +22,9 @@ struct RootTabView: View {
                         NavigationView { CollapseView() }
                             .navigationViewStyle(StackNavigationViewStyle())
                     case 3:
+                        NavigationView { CoresView() }
+                            .navigationViewStyle(StackNavigationViewStyle())
+                    case 4:
                         NavigationView { AwardsView() }
                             .navigationViewStyle(StackNavigationViewStyle())
                     default:
@@ -100,8 +103,9 @@ struct RootTabView: View {
             tabButton(0, "Mine", AnyView(DDMTabMineIcon(color: tint(0), size: 24)))
             tabButton(1, "Upgrades", AnyView(DDMTabUpgradeIcon(color: tint(1), size: 22)))
             tabButton(2, "Collapse", AnyView(DDMTabCollapseIcon(color: tint(2), size: 24)))
-            tabButton(3, "Awards", AnyView(DDMTabAwardsIcon(color: tint(3), size: 24)))
-            tabButton(4, "More", AnyView(DDMTabMoreIcon(color: tint(4), size: 24)))
+            tabButton(3, "Cores", AnyView(DDMCoreShape().fill(tint(3)).frame(width: 22, height: 22)))
+            tabButton(4, "Awards", AnyView(DDMTabAwardsIcon(color: tint(4), size: 24)))
+            tabButton(5, "More", AnyView(DDMTabMoreIcon(color: tint(5), size: 24)))
         }
         .padding(.top, 8)
         .padding(.bottom, 4)
