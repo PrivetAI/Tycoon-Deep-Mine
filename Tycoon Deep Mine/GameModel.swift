@@ -527,7 +527,10 @@ enum DDMWorld {
 
     static func milestoneReward(_ m: Int) -> (gold: Double, gems: Int) {
         // gold scales with the difficulty of reaching the depth; gems are a small bump.
-        let gold = 50.0 * pow(Double(m), 1.9)
+        // Modest one-time bonus (NOT income-replacing). Was 50*m^1.9 (depth 250 = 1.8M!),
+        // which dumped millions — especially on a migrated save where every milestone
+        // fired at once. Now a small, slowly-growing pickup.
+        let gold = 8.0 * pow(Double(m), 1.15)
         let gems = max(1, m / 200)
         return (gold.rounded(), gems)
     }
@@ -578,7 +581,7 @@ enum DDMWorld {
         // Boss gate?
         if DDMZone.isBossDepth(depth) {
             // Boss reward scales with depth; gems give prestige a steady drip.
-            let bossGold = (rubble * 30.0 + 200.0 * pow(Double(max(1, depth)), 1.4)).rounded()
+            let bossGold = (rubble * 6.0 + 25.0 * pow(Double(max(1, depth)), 1.05)).rounded()
             let bossGems = max(2, depth / 250 + 2)
             // a guaranteed burst of the richest unlocked ore
             let richOre = unlocked.last ?? .coal
@@ -596,7 +599,7 @@ enum DDMWorld {
         // store decide extra finds; this flag marks the *guaranteed* base geodes.
         let treasureRoll = rng.nextDouble()
         if depth > 5 && treasureRoll < 0.035 {
-            let tGold = (rubble * 12.0 + 60.0 * pow(Double(max(1, depth)), 1.2)).rounded()
+            let tGold = (rubble * 4.0 + 12.0 * pow(Double(max(1, depth)), 1.0)).rounded()
             let tGem = rng.chance(0.18) ? 1 : 0
             let richOre = unlocked.last ?? .coal
             let tOreAmt = (Double(rng.nextInt(8, 18)) * zone.oreMult).rounded()

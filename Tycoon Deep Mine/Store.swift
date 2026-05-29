@@ -17,7 +17,10 @@ final class DDMStore: ObservableObject {
     private var lastTick: Date = Date()
     private var saveAccumulator: Double = 0
 
-    private static let saveKey = "ddm.save.v1"
+    // v2: economy was rebalanced incompatibly — start fresh so old saves (overpowered
+    // from the earlier too-cheap builds, with a high maxDepth that dumped every depth
+    // milestone at once) don't trivialise the new curve.
+    private static let saveKey = "ddm.save.v2"
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
 
