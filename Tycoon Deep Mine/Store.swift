@@ -53,7 +53,7 @@ final class DDMStore: ObservableObject {
     var gemMultiplier: Double {
         let g = Double(max(0, save.gems))
         if g <= 0 { return 1.0 }
-        let m = 1.0 + pow(g, 0.78) * 0.42
+        let m = 1.0 + pow(g, 0.78) * 0.20
         return m.isFinite ? m : 1.0
     }
 
@@ -75,7 +75,7 @@ final class DDMStore: ObservableObject {
     // Multiplicative "milestone" bonus: x2 every 35 levels (was 25 — slower so the
     // doubling can't snowball past the cost curve).
     private func milestoneScale(_ level: Int) -> Double {
-        let steps = level / 40
+        let steps = level / 60
         return pow(2.0, Double(steps))
     }
 
@@ -88,7 +88,7 @@ final class DDMStore: ObservableObject {
     // Slightly softer per-level slope than before (was +2/level) to match steeper costs.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 1.4
+        let base = 1.0 + Double(lvl) * 0.6
         let d = base * milestoneScale(lvl) * damageMultiplier
         return d.isFinite ? max(1, d) : 1
     }
@@ -115,8 +115,8 @@ final class DDMStore: ObservableObject {
         let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 2.0
         if count <= 0 { return 0 }
         let speedLvl = upgradeLevel(.drillSpeed)
-        let perDrill = 1.0 * milestoneScale(countLvl)
-        let speed = (1.0 + Double(speedLvl) * 0.25) * milestoneScale(speedLvl)
+        let perDrill = 0.5 * milestoneScale(countLvl)
+        let speed = (1.0 + Double(speedLvl) * 0.12) * milestoneScale(speedLvl)
         let gearing = 1.0 + Double(upgradeLevel(.drillEfficiency)) * 0.15
         let turbo = 1.0 + Double(techLevel(.turboDrills)) * 0.08
         let dps = count * perDrill * speed * gearing * turbo * damageMultiplier
@@ -155,8 +155,8 @@ final class DDMStore: ObservableObject {
 
     // Ore sell value multiplier (raw ore). Softer grader step (was 0.25) to match costs.
     var oreValueMultiplier: Double {
-        let grader = 1.0 + Double(upgradeLevel(.oreValue)) * 0.15
-        let refiner = 1.0 + Double(upgradeLevel(.refiner)) * 0.13
+        let grader = 1.0 + Double(upgradeLevel(.oreValue)) * 0.07
+        let refiner = 1.0 + Double(upgradeLevel(.refiner)) * 0.06
         let m = grader * refiner * yieldMultiplier * goldFindMultiplier
         return m.isFinite ? m : 1.0
     }
@@ -164,7 +164,7 @@ final class DDMStore: ObservableObject {
     // Per-ore mastery value multiplier for a specific ore.
     func oreMasteryMultiplier(_ ore: DDMOre) -> Double {
         let lvl = save.oreMastery[ore.rawValue] ?? 0
-        let m = 1.0 + Double(lvl) * 0.15
+        let m = 1.0 + Double(lvl) * 0.06
         return m.isFinite ? max(1.0, m) : 1.0
     }
 
