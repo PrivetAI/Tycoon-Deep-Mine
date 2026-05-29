@@ -20,7 +20,7 @@ final class DDMStore: ObservableObject {
     // v2: economy was rebalanced incompatibly — start fresh so old saves (overpowered
     // from the earlier too-cheap builds, with a high maxDepth that dumped every depth
     // milestone at once) don't trivialise the new curve.
-    private static let saveKey = "ddm.save.v3"
+    private static let saveKey = "ddm.save.v4"
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
 
@@ -889,7 +889,7 @@ final class DDMStore: ObservableObject {
             // high-value ore -> no "billions in a minute") AND prevents the old
             // 5000-clears/tick CPU lag. Overflow DPS beyond the cap is dropped this tick.
             var guardCount = 0
-            while remaining > 0 && guardCount < 4 {
+            while remaining > 0 && guardCount < 1 {
                 guardCount += 1
                 var block = currentBlock
                 if remaining >= block.hp {

@@ -543,7 +543,7 @@ enum DDMWorld {
     static func blockHP(depth: Int) -> Double {
         let d = Double(max(0, depth))
         let zone = DDMZone.zone(at: depth)
-        let base = 10.0 * pow(1.013, d) + d * 1.0 + 10.0
+        let base = 10.0 * pow(1.020, d) + d * 2.0 + 12.0
         var hp = base * zone.hpMult
         if DDMZone.isBossDepth(depth) {
             hp *= 8.0 // bedrock gate — a real speed bump, beatable with burst taps/auto
