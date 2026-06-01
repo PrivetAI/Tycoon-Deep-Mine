@@ -41,28 +41,29 @@ enum DDMOre: Int, CaseIterable, Codable {
         }
     }
 
-    // Base sell value per unit of ore.
-    // Each tier is ~4.5x the previous. Income from richer ore still climbs geometrically
-    // with depth, but the upgrade cost curves now climb FASTER (see DDMUpgradeDef), so a
-    // single new ore tier no longer trivially funds every upgrade.
+    // Base sell value per unit of ore. Each tier is ~2.6x the previous (was ~3.5x),
+    // tightened so the income surge at each tier unlock can't overwhelm the cost ladder.
+    // The total span (coal=1 → aetherium=2.1M) is still a 6-order-of-magnitude climb —
+    // multiplicative upgrade lines (grader 1.13/L, refiner 1.10/L, gem mult, meta mult)
+    // carry the rest of the late-game growth.
     var baseValue: Double {
         switch self {
         case .coal: return 1
-        case .copper: return 5
-        case .tin: return 20
-        case .iron: return 75
-        case .silver: return 260
-        case .gold: return 900
-        case .ruby: return 3_200
-        case .emerald: return 11_000
-        case .sapphire: return 38_000
-        case .diamond: return 130_000
-        case .mithril: return 440_000
-        case .obsidian: return 1_500_000
-        case .adamantite: return 5_000_000
-        case .voidstone: return 17_000_000
-        case .starmetal: return 58_000_000
-        case .aetherium: return 200_000_000
+        case .copper: return 3
+        case .tin: return 8
+        case .iron: return 21
+        case .silver: return 55
+        case .gold: return 145
+        case .ruby: return 380
+        case .emerald: return 990
+        case .sapphire: return 2_600
+        case .diamond: return 6_800
+        case .mithril: return 17_700
+        case .obsidian: return 46_000
+        case .adamantite: return 120_000
+        case .voidstone: return 312_000
+        case .starmetal: return 810_000
+        case .aetherium: return 2_100_000
         }
     }
 
@@ -135,6 +136,10 @@ struct DDMZone: Identifiable {
         return "\(startDepth)–\(endDepth) m"
     }
 
+    // Zone multipliers: hpMult unchanged (descent gating stays), goldMult and oreMult
+    // trimmed so a zone-boundary crossing now adds ×1.35 gold (was ×1.6) and ×1.20 ore.
+    // Combined with the ×2.6 ore tier ratio, a zone+tier crossing peaks at ~×3.5 income
+    // — bounded enough that a 1.40 cost ladder absorbs it into ~3 bought levels.
     static let all: [DDMZone] = [
         DDMZone(index: 0, name: "Topsoil", startDepth: 0, endDepth: 80,
                 hpMult: 1.0, goldMult: 1.0, oreMult: 1.0,
@@ -143,55 +148,55 @@ struct DDMZone: Identifiable {
                 baseFill: Color(red: 0.30, green: 0.21, blue: 0.13),
                 accent: Color(red: 0.57, green: 0.42, blue: 0.28)),
         DDMZone(index: 1, name: "Stone Shelf", startDepth: 80, endDepth: 230,
-                hpMult: 1.6, goldMult: 1.6, oreMult: 1.3,
+                hpMult: 1.6, goldMult: 1.4, oreMult: 1.2,
                 bandA: Color(red: 0.40, green: 0.36, blue: 0.33),
                 bandB: Color(red: 0.30, green: 0.27, blue: 0.24),
                 baseFill: Color(red: 0.26, green: 0.24, blue: 0.22),
                 accent: Color(red: 0.52, green: 0.47, blue: 0.43)),
         DDMZone(index: 2, name: "Crystal Caverns", startDepth: 230, endDepth: 540,
-                hpMult: 2.6, goldMult: 2.6, oreMult: 1.7,
+                hpMult: 2.6, goldMult: 1.9, oreMult: 1.4,
                 bandA: Color(red: 0.26, green: 0.34, blue: 0.46),
                 bandB: Color(red: 0.18, green: 0.25, blue: 0.36),
                 baseFill: Color(red: 0.14, green: 0.20, blue: 0.30),
                 accent: Color(red: 0.46, green: 0.74, blue: 0.86)),
         DDMZone(index: 3, name: "Magma Veins", startDepth: 540, endDepth: 1_100,
-                hpMult: 4.2, goldMult: 4.2, oreMult: 2.2,
+                hpMult: 4.2, goldMult: 2.6, oreMult: 1.7,
                 bandA: Color(red: 0.46, green: 0.20, blue: 0.14),
                 bandB: Color(red: 0.34, green: 0.13, blue: 0.09),
                 baseFill: Color(red: 0.28, green: 0.10, blue: 0.07),
                 accent: Color(red: 0.96, green: 0.52, blue: 0.20)),
         DDMZone(index: 4, name: "The Abyss", startDepth: 1_100, endDepth: 2_000,
-                hpMult: 7.0, goldMult: 7.0, oreMult: 3.0,
+                hpMult: 7.0, goldMult: 3.5, oreMult: 2.0,
                 bandA: Color(red: 0.22, green: 0.18, blue: 0.34),
                 bandB: Color(red: 0.15, green: 0.12, blue: 0.26),
                 baseFill: Color(red: 0.11, green: 0.09, blue: 0.20),
                 accent: Color(red: 0.62, green: 0.52, blue: 0.92)),
         DDMZone(index: 5, name: "World's Core", startDepth: 2_000, endDepth: 2_700,
-                hpMult: 12.0, goldMult: 12.0, oreMult: 4.0,
+                hpMult: 12.0, goldMult: 4.7, oreMult: 2.5,
                 bandA: Color(red: 0.40, green: 0.30, blue: 0.10),
                 bandB: Color(red: 0.28, green: 0.20, blue: 0.06),
                 baseFill: Color(red: 0.20, green: 0.14, blue: 0.04),
                 accent: Color(red: 0.98, green: 0.78, blue: 0.30)),
         DDMZone(index: 6, name: "Mantle Forge", startDepth: 2_700, endDepth: 3_600,
-                hpMult: 19.0, goldMult: 18.0, oreMult: 5.0,
+                hpMult: 19.0, goldMult: 6.3, oreMult: 3.0,
                 bandA: Color(red: 0.20, green: 0.46, blue: 0.34),
                 bandB: Color(red: 0.13, green: 0.34, blue: 0.25),
                 baseFill: Color(red: 0.08, green: 0.24, blue: 0.18),
                 accent: Color(red: 0.42, green: 0.92, blue: 0.66)),
         DDMZone(index: 7, name: "The Void Rift", startDepth: 3_600, endDepth: 4_800,
-                hpMult: 30.0, goldMult: 28.0, oreMult: 6.5,
+                hpMult: 30.0, goldMult: 8.5, oreMult: 3.7,
                 bandA: Color(red: 0.20, green: 0.12, blue: 0.34),
                 bandB: Color(red: 0.13, green: 0.07, blue: 0.24),
                 baseFill: Color(red: 0.09, green: 0.05, blue: 0.18),
                 accent: Color(red: 0.66, green: 0.40, blue: 0.96)),
         DDMZone(index: 8, name: "Stellar Vault", startDepth: 4_800, endDepth: 6_400,
-                hpMult: 48.0, goldMult: 44.0, oreMult: 8.0,
+                hpMult: 48.0, goldMult: 11.5, oreMult: 4.5,
                 bandA: Color(red: 0.20, green: 0.26, blue: 0.46),
                 bandB: Color(red: 0.13, green: 0.18, blue: 0.36),
                 baseFill: Color(red: 0.08, green: 0.12, blue: 0.28),
                 accent: Color(red: 0.62, green: 0.74, blue: 0.98)),
         DDMZone(index: 9, name: "Aether Wellspring", startDepth: 6_400, endDepth: Int.max,
-                hpMult: 76.0, goldMult: 70.0, oreMult: 10.0,
+                hpMult: 76.0, goldMult: 15.5, oreMult: 5.5,
                 bandA: Color(red: 0.44, green: 0.38, blue: 0.18),
                 bandB: Color(red: 0.32, green: 0.27, blue: 0.10),
                 baseFill: Color(red: 0.22, green: 0.18, blue: 0.06),
@@ -258,53 +263,52 @@ struct DDMUpgradeDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // Proportional cost ladder paired with the multiplicative effect curves in Store.swift:
-    // cost grows ~1.18–1.30 per level, effect grows ~1.06–1.12 per level, so each next
-    // level takes only ~10–15% longer to afford than the previous one — no early-game
-    // "free first 5 levels for nothing" and no late-game exponential wall.
-    // Base costs are tuned so the first auto-sell + first drill are reachable in 3–5 min
-    // of pure tapping; the bigger systems (Multi-Strike, Auto Pick, Pressure Drill) sit
-    // far enough out that they're mid-game investments, not first-minute purchases.
+    // Cost ladder paired with the multiplicative effects in Store.swift. Cost growth is
+    // 1.40 typical (was 1.18–1.30 in v7, which was too smooth — income surges from ore
+    // tier + zone crossings (×3.3–4.5) collapsed into 7–9 bought levels at once, which
+    // felt "exponential"). At 1.40 cost growth a ×3.5 surge → ~3 bought levels: enough to
+    // feel rewarding, not enough to trivialise the next stage. Effect growth is bumped
+    // accordingly (1.12–1.15 in Store) so the per-level "wall" is ~20–25% (cost/effect).
     static let all: [DDMUpgradeDef] = [
         DDMUpgradeDef(kind: .pickaxe, title: "Pickaxe Power",
-                      blurb: "+10% tap damage per level.",
-                      baseCost: 10, costGrowth: 1.18, maxLevel: 9999),
+                      blurb: "+12% tap damage per level.",
+                      baseCost: 8, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .cart, title: "Mine Cart",
                       blurb: "Auto-collects and auto-sells mined ore.",
-                      baseCost: 50, costGrowth: 1.22, maxLevel: 9999),
+                      baseCost: 60, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillCount, title: "Drill Rig",
                       blurb: "Adds an auto-drill that mines for you.",
-                      baseCost: 120, costGrowth: 1.25, maxLevel: 9999),
+                      baseCost: 150, costGrowth: 1.45, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillSpeed, title: "Drill Tuning",
-                      blurb: "+10% drill speed per level.",
-                      baseCost: 400, costGrowth: 1.22, maxLevel: 9999),
+                      blurb: "+13% drill speed per level.",
+                      baseCost: 500, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .dynamite, title: "Dynamite Charge",
                       blurb: "Bonus tap damage vs bedrock & bosses.",
-                      baseCost: 1_500, costGrowth: 1.22, maxLevel: 9999),
+                      baseCost: 2_000, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .oreValue, title: "Ore Grader",
-                      blurb: "+10% ore sell value per level.",
-                      baseCost: 1_500, costGrowth: 1.22, maxLevel: 9999),
+                      blurb: "+13% ore sell value per level.",
+                      baseCost: 2_500, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .refiner, title: "Refiner",
-                      blurb: "+8% sale gold per level.",
-                      baseCost: 3_500, costGrowth: 1.22, maxLevel: 9999),
+                      blurb: "+10% sale gold per level.",
+                      baseCost: 5_000, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .elevator, title: "Elevator",
                       blurb: "Eases descent — small depth bonus per block.",
-                      baseCost: 8_000, costGrowth: 1.30, maxLevel: 200),
+                      baseCost: 10_000, costGrowth: 1.45, maxLevel: 200),
         DDMUpgradeDef(kind: .drillEfficiency, title: "Drill Gearing",
-                      blurb: "+8% auto mining output per level.",
-                      baseCost: 8_000, costGrowth: 1.22, maxLevel: 9999),
+                      blurb: "+10% auto mining output per level.",
+                      baseCost: 10_000, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .goldFind, title: "Prospect Sense",
-                      blurb: "+6% gold from rubble & sales per level.",
-                      baseCost: 15_000, costGrowth: 1.22, maxLevel: 9999),
+                      blurb: "+7% gold from rubble & sales per level.",
+                      baseCost: 25_000, costGrowth: 1.40, maxLevel: 9999),
         DDMUpgradeDef(kind: .multiTap, title: "Multi-Strike",
                       blurb: "Each tap lands +1 extra strike per level.",
-                      baseCost: 40_000, costGrowth: 1.40, maxLevel: 25),
+                      baseCost: 60_000, costGrowth: 1.55, maxLevel: 20),
         DDMUpgradeDef(kind: .autoTapper, title: "Auto Pick",
                       blurb: "A mechanical arm auto-taps for you.",
-                      baseCost: 60_000, costGrowth: 1.25, maxLevel: 200),
+                      baseCost: 80_000, costGrowth: 1.40, maxLevel: 200),
         DDMUpgradeDef(kind: .depthScaling, title: "Pressure Drill",
                       blurb: "All damage rises with current depth.",
-                      baseCost: 80_000, costGrowth: 1.25, maxLevel: 300)
+                      baseCost: 120_000, costGrowth: 1.40, maxLevel: 300)
     ]
 
     static func def(_ kind: DDMUpgradeKind) -> DDMUpgradeDef {
@@ -527,13 +531,11 @@ enum DDMWorld {
                                     7_500, 9_000, 11_000, 14_000]
 
     static func milestoneReward(_ m: Int) -> (gold: Double, gems: Int) {
-        // Milestone rewards are RECOGNITION, not the income source. The old 8 * m^1.15
-        // dumped 650 gold at depth 50 — 65× the first pickaxe — which collapsed the
-        // "tap → afford → buy" pacing into "hit milestone → buy everything". The new
-        // 5 * m^1.10 is large enough to feel like a real reward (~360 at d=50, ~2100
-        // at d=250) without overshadowing the per-block income stream.
-        let gold = 5.0 * pow(Double(m), 1.10)
-        let gems = max(1, m / 250)
+        // Trimmed further (was 5 * m^1.10): with the new 1.40 cost ladder a 360-gold
+        // dump at d=50 still bought too many upgrade levels at once. 2.5 * m^1.05 gives
+        // ~175 at d=50, ~590 at d=230, ~2400 at d=1000 — recognition, not income source.
+        let gold = 2.5 * pow(Double(m), 1.05)
+        let gems = max(1, m / 300)
         return (gold.rounded(), gems)
     }
 
