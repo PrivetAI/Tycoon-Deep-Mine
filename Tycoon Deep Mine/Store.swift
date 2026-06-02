@@ -17,14 +17,19 @@ final class DDMStore: ObservableObject {
     private var lastTick: Date = Date()
     private var saveAccumulator: Double = 0
 
-    // v12: build 17 was structurally and numerically right for the early game, but the
-    // ORE TIERS were still doubling per tier (×2.0). At depth 700, an Emerald (tier 7)
-    // was worth 130 base × goldBonus — so a stash of a few hundred Emeralds was tens of
-    // thousands of gold sold in one "Sell All Ore" tap. That's the "after a minute lots
-    // of stuff" the user kept reporting. v12 compresses tier ratio to ×1.5 (Emerald=17
-    // base instead of 130) and halves the gem damage/gold bonus (0.02 → 0.01 per gem).
-    // Subagent audit (2026-06-02) confirmed no other depth amplifier exists.
-    private static let saveKey = "ddm.save.v12"
+    // v13: the user's "taps give a lot of gold" complaint turned out to be PERCEPTUAL,
+    // not economic. Subagent audit identified two compounding UI defects:
+    //   1) Floating-hit text on each tap was colored gold/amber (DDMPalette.goldLight /
+    //      .amberGlow) with no label — the brain reads a yellow number popping off the
+    //      rock as "+gold". Fixed in MineView: white-cream for normal, red for crit,
+    //      with a "-" prefix so it reads as DAMAGE.
+    //   2) `goldPerSecond` only counted block-clear gold, ignoring the cart actively
+    //      auto-selling existing ore stash at ~50 g/sec. So the HUD said Gold/s = 0
+    //      while gold genuinely ticked up from the cart — the player could only attribute
+    //      the visible income to the only thing they were doing: tapping. Fixed by
+    //      including cart sell-rate × avg held-ore value in the goldPerSecond formula.
+    // Also halved cartRate (was L*1.5+1, now L*0.5+0.5) so ambient stash drain is gentler.
+    private static let saveKey = "ddm.save.v13"
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
 
@@ -298,11 +303,14 @@ final class DDMStore: ObservableObject {
     }
 
     // Cart auto-collect & auto-sell rate (ore units / second processed). 0 = manual only.
+    // v13: halved from (L*1.5 + 1.0) to (L*0.5 + 0.5). Cart L2 was draining a 23K stash
+    // at ~4 ore/sec = ~50 g/sec passively into the gold counter while the HUD said
+    // Gold/s = 0 — the dominant non-perception driver of "ambient gold flow" complaints.
     var cartRate: Double {
         let lvl = upgradeLevel(.cart)
         if lvl <= 0 { return 0 }
         let logistics = 1.0 + Double(techLevel(.logistics)) * 0.25
-        let r = (Double(lvl) * 1.5 + 1.0) * logistics
+        let r = (Double(lvl) * 0.5 + 0.5) * logistics
         return r.isFinite ? r : 0
     }
 
@@ -329,15 +337,23 @@ final class DDMStore: ObservableObject {
     }
 
     // Estimated gold/sec from auto systems (for display + offline remainder estimate).
+    // v13: now also INCLUDES the cart auto-sell rate of any existing ore stash, so the
+    // HUD's "Gold/s" value matches the actual gold counter motion. Before this fix the
+    // HUD showed 0 while cart was draining 23K of held ore at 50 g/sec — gold appeared
+    // to materialise on every tap, which the user read as "tap mints gold".
     var goldPerSecond: Double {
         guard hasAutoSell else { return 0 }
-        // approximate: dps clears HP -> blocks/sec -> ore value avg
         let hp = max(1.0, currentBlock.maxHP)
         let blocksPerSec = (autoDPS + autoTapDPS) / hp
         var perBlockGold = estimatedBlockGold(currentBlock)
-        // Smelting roughly multiplies ore value (bars worth ~3.5x); reflect it in the rate.
         if hasSmelter { perBlockGold *= 1.8 }
-        let g = blocksPerSec * perBlockGold
+        var g = blocksPerSec * perBlockGold
+        // Cart selling existing ore stash also contributes a steady gold rate.
+        let totalOre = totalHeldOre
+        if totalOre > 0 {
+            let avgValue = heldOreValue / totalOre
+            g += min(cartRate, totalOre) * avgValue
+        }
         return g.isFinite ? max(0, g) : 0
     }
 
@@ -396,7 +412,11 @@ final class DDMStore: ObservableObject {
     }
 
     private func addFloatingHit(amount: Double, crit: Bool) {
-        let hit = DDMFloatingHit(id: UUID(), text: crit ? "CRIT \(DDMFormat.number(amount))" : DDMFormat.number(amount), crit: crit)
+        // Damage numbers — prefixed with "-" so they unambiguously read as HP subtracted,
+        // not gold added. Combined with the white/red colors in MineView, this rules out
+        // the perceptual "tap = gold" coupling that drove 18 rounds of misread feedback.
+        let text = crit ? "CRIT -\(DDMFormat.number(amount))" : "-\(DDMFormat.number(amount))"
+        let hit = DDMFloatingHit(id: UUID(), text: text, crit: crit)
         floatingHits.append(hit)
         if floatingHits.count > 6 { floatingHits.removeFirst(floatingHits.count - 6) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in

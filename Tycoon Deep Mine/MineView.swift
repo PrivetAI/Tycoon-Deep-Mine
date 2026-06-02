@@ -84,12 +84,15 @@ struct MineView: View {
 
                 Spacer()
 
-                // floating hits
+                // floating hits — DAMAGE numbers, color-coded distinctly from gold
+                // (was gold/amber — read as gold-income, which is what caused 18 builds
+                // of "taps give too much gold" feedback). White-cream for normal taps,
+                // red for crits. Damage shown as a negative number subtracted from HP.
                 ZStack {
                     ForEach(store.floatingHits) { hit in
                         Text(hit.text)
                             .font(.system(size: hit.crit ? 22 : 16, weight: .heavy, design: .rounded))
-                            .foregroundColor(hit.crit ? DDMPalette.amberGlow : DDMPalette.goldLight)
+                            .foregroundColor(hit.crit ? DDMPalette.danger : DDMPalette.textOnDark)
                             .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
