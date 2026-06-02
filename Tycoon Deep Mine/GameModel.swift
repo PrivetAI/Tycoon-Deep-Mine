@@ -41,29 +41,29 @@ enum DDMOre: Int, CaseIterable, Codable {
         }
     }
 
-    // Base sell value per unit of ore. ~2.0x per tier (Cookie Clicker spirit) — gentle
-    // climb, no per-tier income explosion. Total span coal=1 → aetherium=34_000 is
-    // ~15 orders of upgrade-level growth less than v8's, which is intentional: late game
-    // scales through ADDITIVE level count + the linear gem-prestige multiplier, not
-    // through tier jumps that previously surged income ×3.5 per boundary.
+    // Base sell value per unit of ore. v12: ratio compressed from ×2.0 to ×1.5 per tier.
+    // At depth 700+ a few hundred Emeralds were worth tens of thousands of gold one-shot
+    // on "Sell All Ore", which is the "1 minute and gold explodes" the user kept hitting.
+    // Compressed ladder cuts that jackpot ~7×: Emerald 130 → 17, Aetherium 34k → 438.
+    // Late-game gold growth instead comes from ADDITIVE upgrade level count.
     var baseValue: Double {
         switch self {
         case .coal: return 1
-        case .copper: return 2
-        case .tin: return 4
-        case .iron: return 8
-        case .silver: return 16
-        case .gold: return 32
-        case .ruby: return 64
-        case .emerald: return 130
-        case .sapphire: return 260
-        case .diamond: return 520
-        case .mithril: return 1_040
-        case .obsidian: return 2_100
-        case .adamantite: return 4_200
-        case .voidstone: return 8_400
-        case .starmetal: return 17_000
-        case .aetherium: return 34_000
+        case .copper: return 1.5
+        case .tin: return 2.3
+        case .iron: return 3.4
+        case .silver: return 5.1
+        case .gold: return 7.6
+        case .ruby: return 11.4
+        case .emerald: return 17.1
+        case .sapphire: return 25.6
+        case .diamond: return 38.4
+        case .mithril: return 57.7
+        case .obsidian: return 86.5
+        case .adamantite: return 130
+        case .voidstone: return 195
+        case .starmetal: return 292
+        case .aetherium: return 438
         }
     }
 

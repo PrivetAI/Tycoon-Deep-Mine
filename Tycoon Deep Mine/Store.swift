@@ -17,14 +17,14 @@ final class DDMStore: ObservableObject {
     private var lastTick: Date = Date()
     private var saveAccumulator: Double = 0
 
-    // v11: build 16 had the structural additive-combining fix, but the absolute numbers
-    // were still too fast — base tap 5 made early blocks (HP ~22) clear in 5 taps, so
-    // depth advanced ~120 m in 1 min from nothing. v11 cuts everything to genuine Cookie
-    // Clicker pacing: tap base 1 + 0.3/L, drill perDrill base 0.4 + 0.05/L (speed) +
-    // 0.05/L (gearing), HP base raised 10 → 30 with slope 2 → 4. Cost growth nudged
-    // 1.20 → 1.22-1.30. Sim @ 10 taps/sec: 1 min ≈ depth 6, 10 min ≈ depth 52, 1 hr ≈
-    // depth 162. Slow burn.
-    private static let saveKey = "ddm.save.v11"
+    // v12: build 17 was structurally and numerically right for the early game, but the
+    // ORE TIERS were still doubling per tier (×2.0). At depth 700, an Emerald (tier 7)
+    // was worth 130 base × goldBonus — so a stash of a few hundred Emeralds was tens of
+    // thousands of gold sold in one "Sell All Ore" tap. That's the "after a minute lots
+    // of stuff" the user kept reporting. v12 compresses tier ratio to ×1.5 (Emerald=17
+    // base instead of 130) and halves the gem damage/gold bonus (0.02 → 0.01 per gem).
+    // Subagent audit (2026-06-02) confirmed no other depth amplifier exists.
+    private static let saveKey = "ddm.save.v12"
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
 
@@ -56,6 +56,7 @@ final class DDMStore: ObservableObject {
 
     /// Sum of all gold-side per-level bonuses (applied as (1 + goldBonusSum) on gold income).
     /// Per-ore mastery is added inline in oreUnitValue(_:) since it's per-ore-type.
+    /// v12: gem contribution halved (0.02 → 0.01 per gem).
     var goldBonusSum: Double {
         Double(upgradeLevel(.oreValue))     * 0.08 +
         Double(upgradeLevel(.refiner))      * 0.04 +
@@ -63,18 +64,19 @@ final class DDMStore: ObservableObject {
         Double(globalLevel(.yieldBoost))    * 0.10 +
         Double(metaLevel(.goldVein))        * 0.10 +
         Double(techLevel(.assayers))        * 0.06 +
-        Double(max(0, save.gems))           * 0.02
+        Double(max(0, save.gems))           * 0.01
     }
 
     /// Sum of all damage-side per-level bonuses (applied as (1 + damageBonusSum) on tap & auto).
     /// Depth-scaling contributes proportionally to current depth (capped at 200 depth-bands).
+    /// v12: gem contribution halved (0.02 → 0.01 per gem).
     var damageBonusSum: Double {
         let depthBands = min(200.0, Double(max(0, save.depth)) / 100.0)
         let depthContrib = Double(upgradeLevel(.depthScaling)) * 0.005 * depthBands
         return Double(globalLevel(.yieldBoost))    * 0.10 +
                Double(metaLevel(.forceCore))       * 0.10 +
                Double(techLevel(.sharpTools))      * 0.06 +
-               Double(max(0, save.gems))           * 0.02 +
+               Double(max(0, save.gems))           * 0.01 +
                depthContrib
     }
 
@@ -82,7 +84,7 @@ final class DDMStore: ObservableObject {
     // These properties used to be the multiplicative chains; now they return the
     // sum-based equivalent so HUD / preview code keeps compiling and showing a useful
     // number. Internal call sites have been updated to use the sums directly.
-    var gemMultiplier: Double { 1.0 + Double(max(0, save.gems)) * 0.02 }
+    var gemMultiplier: Double { 1.0 + Double(max(0, save.gems)) * 0.01 }
     var yieldMultiplier: Double { 1.0 + goldBonusSum }
     var damageMultiplier: Double { 1.0 + damageBonusSum }
 
