@@ -17,19 +17,18 @@ final class DDMStore: ObservableObject {
     private var lastTick: Date = Date()
     private var saveAccumulator: Double = 0
 
-    // v13: the user's "taps give a lot of gold" complaint turned out to be PERCEPTUAL,
-    // not economic. Subagent audit identified two compounding UI defects:
-    //   1) Floating-hit text on each tap was colored gold/amber (DDMPalette.goldLight /
-    //      .amberGlow) with no label — the brain reads a yellow number popping off the
-    //      rock as "+gold". Fixed in MineView: white-cream for normal, red for crit,
-    //      with a "-" prefix so it reads as DAMAGE.
-    //   2) `goldPerSecond` only counted block-clear gold, ignoring the cart actively
-    //      auto-selling existing ore stash at ~50 g/sec. So the HUD said Gold/s = 0
-    //      while gold genuinely ticked up from the cart — the player could only attribute
-    //      the visible income to the only thing they were doing: tapping. Fixed by
-    //      including cart sell-rate × avg held-ore value in the goldPerSecond formula.
-    // Also halved cartRate (was L*1.5+1, now L*0.5+0.5) so ambient stash drain is gentler.
-    private static let saveKey = "ddm.save.v13"
+    // v14: full economy REWRITE FROM SCRATCH per user direction. 19 builds of tuning
+    // converged on these structural rules — this is the canonical implementation:
+    //   * HP curve LINEAR (`50 + d*10` * hpMult) — no `pow(1.020, d)` anywhere
+    //   * Block rubble LINEAR (`1 + d*2`) — no zone goldMult cascade
+    //   * Ore drop amount FIXED (always 1 per drop, 35% chance) — no depth slope
+    //   * Ore tier ratio ×1.4 per tier (was ×3.5 → ×2.0 → ×1.5 → finally ×1.4)
+    //   * Zone goldMult / oreMult ELIMINATED (zones are purely cosmetic + hpMult)
+    //   * Cost growth UNIFORM 1.15 (Cookie Clicker)
+    //   * Gem prestige LINEAR: floor(runMaxDepth / 100), each gem +1% on both sums
+    //   * Tap = (1 + L*0.5) * (1 + damageBonusSum). Drill perDrill = 0.5 + sums.
+    //   * goldBonusSum / damageBonusSum are the ONLY composite multipliers anywhere.
+    private static let saveKey = "ddm.save.v14"
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
 
@@ -61,26 +60,25 @@ final class DDMStore: ObservableObject {
 
     /// Sum of all gold-side per-level bonuses (applied as (1 + goldBonusSum) on gold income).
     /// Per-ore mastery is added inline in oreUnitValue(_:) since it's per-ore-type.
-    /// v12: gem contribution halved (0.02 → 0.01 per gem).
+    /// v14: rates tuned for full-rewrite economy. Each entry is the +% per level / gem.
     var goldBonusSum: Double {
-        Double(upgradeLevel(.oreValue))     * 0.08 +
-        Double(upgradeLevel(.refiner))      * 0.04 +
-        Double(upgradeLevel(.goldFind))     * 0.03 +
-        Double(globalLevel(.yieldBoost))    * 0.10 +
-        Double(metaLevel(.goldVein))        * 0.10 +
-        Double(techLevel(.assayers))        * 0.06 +
-        Double(max(0, save.gems))           * 0.01
+        Double(upgradeLevel(.oreValue))     * 0.10 +   // Ore Grader: +10% per level
+        Double(upgradeLevel(.refiner))      * 0.05 +   // Refiner: +5% per level
+        Double(upgradeLevel(.goldFind))     * 0.03 +   // Prospect Sense: +3% per level
+        Double(globalLevel(.yieldBoost))    * 0.10 +   // Deep Veins (global): +10%
+        Double(metaLevel(.goldVein))        * 0.05 +   // Gold Vein (meta): +5%
+        Double(techLevel(.assayers))        * 0.03 +   // Assayers (tech): +3%
+        Double(max(0, save.gems))           * 0.01     // each gem: +1%
     }
 
     /// Sum of all damage-side per-level bonuses (applied as (1 + damageBonusSum) on tap & auto).
-    /// Depth-scaling contributes proportionally to current depth (capped at 200 depth-bands).
-    /// v12: gem contribution halved (0.02 → 0.01 per gem).
+    /// Depth-scaling contributes proportionally to current depth (capped at 50 depth-bands).
     var damageBonusSum: Double {
-        let depthBands = min(200.0, Double(max(0, save.depth)) / 100.0)
+        let depthBands = min(50.0, Double(max(0, save.depth)) / 100.0)
         let depthContrib = Double(upgradeLevel(.depthScaling)) * 0.005 * depthBands
-        return Double(globalLevel(.yieldBoost))    * 0.10 +
-               Double(metaLevel(.forceCore))       * 0.10 +
-               Double(techLevel(.sharpTools))      * 0.06 +
+        return Double(globalLevel(.yieldBoost))    * 0.05 +   // half of gold (yield boost double-counts)
+               Double(metaLevel(.forceCore))       * 0.05 +
+               Double(techLevel(.sharpTools))      * 0.03 +
                Double(max(0, save.gems))           * 0.01 +
                depthContrib
     }
@@ -98,12 +96,11 @@ final class DDMStore: ObservableObject {
         1 + upgradeLevel(.multiTap)
     }
 
-    // Per-strike tap (pickaxe) damage. v11: base 1 + 0.3 per level (was 5 + 0.5/L —
-    // too strong, breezed through early depths). At L0 = 1, L10 = 4, L20 = 7. Damage
-    // bonus sum applied once.
+    // Per-strike tap (pickaxe) damage. v14: base 1 + 0.5/L. L0=1, L10=6, L20=11, L50=26.
+    // Linear scaling, predictable.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 0.3
+        let base = 1.0 + Double(lvl) * 0.5
         let d = base * (1.0 + damageBonusSum)
         return d.isFinite ? max(1, d) : 1
     }
@@ -115,25 +112,24 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(1, d) : 1
     }
 
-    // Bonus tap damage vs boss/bedrock blocks (dynamite charge). +4 dmg per level.
+    // Bonus tap damage vs boss/bedrock blocks (dynamite charge). v14: +5 dmg per level.
     var burstBonusDamage: Double {
         let lvl = upgradeLevel(.dynamite)
         if lvl <= 0 { return 0 }
-        let base = Double(lvl) * 4.0
+        let base = Double(lvl) * 5.0
         let d = base * (1.0 + damageBonusSum)
         return d.isFinite ? max(0, d) : 0
     }
 
-    // Auto drill damage per second. v11: per-drill base lowered from 1.0 to 0.4, and
-    // the speed/gearing per-level contributions trimmed to 0.05 each (was 0.10/0.08).
-    // First drill now adds 0.4 DPS — felt as "this drill helps a bit" rather than
-    // "this drill is the engine". Per-drill is still ADDITIVE (no chains).
+    // Auto drill damage per second. v14: each drill outputs (0.5 + speed*0.10 +
+    // gearing*0.05 + turbo*0.05) DPS — additive contributions. Total = drillCount ×
+    // perDrill × (1 + damageBonusSum). One product, two factors, no chains.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
-        let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 2.0
+        let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 1.0
         if count <= 0 { return 0 }
-        let perDrill = 0.4 +
-            Double(upgradeLevel(.drillSpeed))      * 0.05 +
+        let perDrill = 0.5 +
+            Double(upgradeLevel(.drillSpeed))      * 0.10 +
             Double(upgradeLevel(.drillEfficiency)) * 0.05 +
             Double(techLevel(.turboDrills))        * 0.05
         let dps = count * perDrill * (1.0 + damageBonusSum)
@@ -141,11 +137,11 @@ final class DDMStore: ObservableObject {
     }
 
     // Auto-tapper: mechanical arm that delivers tap-strength hits automatically.
-    // Each level adds 0.5 auto-taps/second; meta perk can add more.
+    // v14: +0.2 auto-taps/sec per level (was 0.5 — meta arm still gives 0.3 each).
     var autoTapRate: Double {
         let lvl = upgradeLevel(.autoTapper)
-        let metaBonus = Double(metaLevel(.autoArm)) * 0.5
-        let r = Double(lvl) * 0.5 + metaBonus
+        let metaBonus = Double(metaLevel(.autoArm)) * 0.3
+        let r = Double(lvl) * 0.2 + metaBonus
         return r.isFinite ? max(0, r) : 0
     }
 
@@ -754,18 +750,14 @@ final class DDMStore: ObservableObject {
 
     // MARK: - Prestige (Collapse)
 
-    // Gems earned from a collapse, based on THIS run's progress:
-    //   depth reached this run + the *delta* of ore sold since the last collapse.
-    // Repeated collapse with no new progress yields ~0 (kills the old exploit where
-    // lifetimeOreSold kept paying out forever).
+    // Gems earned from a collapse. v14: LINEAR in depth — floor(runMaxDepth / 100).
+    // d=100 = 1 gem, d=500 = 5, d=1000 = 10, d=5000 = 50. metaGemMultiplier (gem
+    // resonance perk) still applies as a small additive bonus. No exponential power.
     var pendingGems: Int {
-        let depthPart = pow(Double(max(0, save.runMaxDepth)) / 40.0, 1.45)
-        let newOre = max(0, save.lifetimeOreSold - save.oreSoldClaimed)
-        let orePart = pow(newOre / 2.0e4, 0.55)
-        let raw = (depthPart + orePart) * metaGemMultiplier
+        let base = Double(max(0, save.runMaxDepth)) / 100.0
+        let raw = base * metaGemMultiplier
         if !raw.isFinite || raw < 0 { return 0 }
-        let g = Int(raw)
-        return max(0, g)
+        return max(0, Int(raw))
     }
 
     var canCollapse: Bool {
