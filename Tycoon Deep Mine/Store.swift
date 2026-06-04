@@ -63,8 +63,8 @@ final class DDMStore: ObservableObject {
     var bonusSum: Double {
         let oreGrader   = Double(upgradeLevel(.oreValue)) * 0.05  // Ore Grader: +5% per level
         let refiner     = Double(upgradeLevel(.refiner))  * 0.03  // Refiner: +3% per level
-        let sharpTools  = 0.0   // wired in Task 16
-        let veinMapping = 0.0   // wired in Task 16
+        let sharpTools  = Double(techLevel(.sharpTools))  * 0.01  // +1% / level
+        let veinMapping = Double(techLevel(.veinMapping)) * 0.01  // +1% / level
         let gemBonus    = Double(max(0, save.gems)) * 0.005       // each gem: +0.5%
         let raw = oreGrader + refiner + sharpTools + veinMapping + gemBonus
         precondition(raw >= 0, "bonusSum components must be non-negative")
@@ -140,27 +140,13 @@ final class DDMStore: ObservableObject {
         save.techs[kind.rawValue] ?? 0
     }
 
-    var researchDamageMultiplier: Double {
-        let sharp = 1.0 + Double(techLevel(.sharpTools)) * 0.06
-        let turbo = 1.0 // turbo applies to auto only (handled in autoDPS gearing below)
-        let m = sharp * turbo
-        return m.isFinite ? max(1.0, m) : 1.0
-    }
+    // v15 Spec §8: sharpTools/veinMapping now feed bonusSum directly (see bonusSum above).
+    // These shims return 1.0 so any residual call sites compile without change.
+    var researchDamageMultiplier: Double { 1.0 }
+    var researchGoldMultiplier: Double   { 1.0 }
 
-    var researchGoldMultiplier: Double {
-        let assay = 1.0 + Double(techLevel(.assayers)) * 0.06
-        return assay.isFinite ? max(1.0, assay) : 1.0
-    }
-
-    // Upgrade-cost discount from Lean Engineering (diminishing, capped ~ -36%).
-    var upgradeCostMultiplier: Double {
-        let lvl = techLevel(.efficiency)
-        if lvl <= 0 { return 1.0 }
-        let disc = 1.0 - pow(0.99, Double(lvl)) // approaches 1 slowly; scale it
-        let scaled = min(0.36, disc * 4.0)      // cap discount at 36%
-        let m = 1.0 - scaled
-        return m.isFinite ? max(0.5, m) : 1.0
-    }
+    // v15 Spec §8: efficiency tech removed; upgrade costs use pure 1.15 growth, no discount.
+    var upgradeCostMultiplier: Double { 1.0 }
 
     // MARK: - Smelter derived stats
 
@@ -172,12 +158,12 @@ final class DDMStore: ObservableObject {
     var hasSmelter: Bool { smelterLevel(.rate) > 0 }
 
     // Ore units fed into the furnace per second.
+    // smeltScience tech (+0.2 ore/s / level) wired in Task 17.
     var smeltRate: Double {
         let lvl = smelterLevel(.rate)
         if lvl <= 0 { return 0 }
         let base = Double(lvl) * 1.5
-        let speed = 1.0 + Double(techLevel(.smelting)) * 0.20
-        let r = base * speed
+        let r = base  // smeltScience direct bonus added in Task 17
         return r.isFinite ? max(0, r) : 0
     }
 
@@ -217,7 +203,7 @@ final class DDMStore: ObservableObject {
     var cartRate: Double {
         let lvl = upgradeLevel(.cart) + globalLevel(.widePan)
         if lvl <= 0 { return 0 }
-        let techBonus = 0.0   // cartLogistics wired in Task 16
+        let techBonus = Double(techLevel(.cartLogistics)) * 0.1  // +0.1 ore/s / level
         let r = Double(lvl) * 0.5 + techBonus
         return r.isFinite ? r : 0
     }
@@ -381,28 +367,21 @@ final class DDMStore: ObservableObject {
             addGold(r.gold * bonusMultiplier)
             save.gems += r.gems
         }
-        accrueResearch()
     }
 
-    // Research Points accrue from NEW deepest depth reached (a banked basis so re-digging
-    // already-explored depth pays nothing — no farming exploit). Closed-form, O(1).
-    private func accrueResearch() {
-        let basis = max(0, save.maxDepth)
-        guard basis > save.researchClaimedDepth else { return }
-        // RP for total depth = depth^1.25 * 0.5 ; pay only the delta since last basis.
-        let total = pow(Double(basis), 1.25) * 0.5
-        let prior = pow(Double(max(0, save.researchClaimedDepth)), 1.25) * 0.5
-        var gained = (total - prior)
-        if !gained.isFinite || gained < 0 { gained = 0 }
-        if gained > 0 {
-            var r = save.research + gained
-            if !r.isFinite || r > 1e300 { r = 1e300 }
-            save.research = r
-            var lr = save.lifetimeResearch + gained
-            if !lr.isFinite || lr > 1e300 { lr = 1e300 }
-            save.lifetimeResearch = lr
-        }
-        save.researchClaimedDepth = basis
+    // Spec §8: RP accrues as a slow linear trickle based on current depth.
+    // Called from autoStep every timer tick.
+    private func accrueResearch(delta: Double) {
+        guard delta > 0 else { return }
+        let rpPerSecond = Double(save.depth) / 50.0
+        let gained = rpPerSecond * delta
+        guard gained > 0 else { return }
+        var r = save.research + gained
+        if !r.isFinite || r > 1e300 { r = 1e300 }
+        save.research = r
+        var lr = save.lifetimeResearch + gained
+        if !lr.isFinite || lr > 1e300 { lr = 1e300 }
+        save.lifetimeResearch = lr
     }
 
     // MARK: - Selling
@@ -712,6 +691,9 @@ final class DDMStore: ObservableObject {
             if totalHeldOre > 0 { autoSellStep(dt) }
             if totalHeldBars > 0 { autoSellBarsStep(dt) }
         }
+
+        // Spec §8: RP slow linear trickle — depth/50 per second.
+        accrueResearch(delta: dt)
     }
 
     // Feed raw ore into the furnace, producing bars. Smelts richest ore first so the

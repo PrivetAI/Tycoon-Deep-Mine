@@ -7,15 +7,11 @@ import SwiftUI
 // multipliers / unlocks that persist through collapse (they're meta progress, reset only
 // by a full reset). Costs scale steeply per level.
 
-enum DDMTechKind: String, Codable, CaseIterable {
-    case sharpTools    // +tap damage mult
-    case turboDrills   // +auto damage mult
-    case assayers      // +ore value mult
-    case logistics     // +cart auto-sell rate
-    case deepScan      // +treasure & gem chance
-    case smelting      // +smelt rate
-    case oreRichness   // +ore amount per block
-    case efficiency    // -upgrade cost growth (cheaper upgrades)
+enum DDMTechKind: String, Codable, CaseIterable, Hashable {
+    case sharpTools      // +1% bonusSum / level
+    case veinMapping     // +1% bonusSum / level
+    case cartLogistics   // +0.1 ore/s / level (direct, NOT via bonusSum)
+    case smeltScience    // +0.2 ore/s / level inside smelter (direct, Task 17 uses this)
 }
 
 struct DDMTechDef: Identifiable {
@@ -33,31 +29,20 @@ struct DDMTechDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
+    // Spec §8: base cost, ×1.20 growth, cap level 30 for all techs.
     static let all: [DDMTechDef] = [
         DDMTechDef(kind: .sharpTools, title: "Sharpened Tools",
-                   blurb: "+6% global mining damage per level.",
-                   baseCost: 12, costGrowth: 1.6, maxLevel: 100),
-        DDMTechDef(kind: .turboDrills, title: "Turbo Drilling",
-                   blurb: "+8% auto mining output per level.",
-                   baseCost: 18, costGrowth: 1.62, maxLevel: 100),
-        DDMTechDef(kind: .assayers, title: "Assay Office",
-                   blurb: "+6% ore & bar sell value per level.",
-                   baseCost: 20, costGrowth: 1.62, maxLevel: 100),
-        DDMTechDef(kind: .logistics, title: "Rail Logistics",
-                   blurb: "+25% mine-cart auto-sell rate per level.",
-                   baseCost: 30, costGrowth: 1.7, maxLevel: 40),
-        DDMTechDef(kind: .deepScan, title: "Deep Scan",
-                   blurb: "+12% geode & gem find per level.",
-                   baseCost: 40, costGrowth: 1.7, maxLevel: 30),
-        DDMTechDef(kind: .smelting, title: "Smelt Science",
-                   blurb: "+20% smelting speed per level.",
-                   baseCost: 35, costGrowth: 1.68, maxLevel: 40),
-        DDMTechDef(kind: .oreRichness, title: "Vein Mapping",
-                   blurb: "+10% ore mined per block per level.",
-                   baseCost: 28, costGrowth: 1.66, maxLevel: 50),
-        DDMTechDef(kind: .efficiency, title: "Lean Engineering",
-                   blurb: "Upgrades cost up to 18% less (per level, diminishing).",
-                   baseCost: 60, costGrowth: 1.85, maxLevel: 20)
+                   blurb: "+1% to global bonus multiplier per level.",
+                   baseCost: 10, costGrowth: 1.20, maxLevel: 30),
+        DDMTechDef(kind: .veinMapping, title: "Vein Mapping",
+                   blurb: "+1% to global bonus multiplier per level.",
+                   baseCost: 12, costGrowth: 1.20, maxLevel: 30),
+        DDMTechDef(kind: .cartLogistics, title: "Cart Logistics",
+                   blurb: "+0.1 ore/s cart rate per level (direct).",
+                   baseCost: 15, costGrowth: 1.20, maxLevel: 30),
+        DDMTechDef(kind: .smeltScience, title: "Smelt Science",
+                   blurb: "+0.2 ore/s smelter throughput per level (direct).",
+                   baseCost: 20, costGrowth: 1.20, maxLevel: 30)
     ]
 
     static func def(_ kind: DDMTechKind) -> DDMTechDef {

@@ -41,12 +41,12 @@ struct ResearchView: View {
             Text("\(DDMFormat.number(store.save.research)) RP")
                 .font(.system(size: 22, weight: .heavy, design: .rounded))
                 .foregroundColor(DDMPalette.textPrimary)
-            Text("Research Points are earned as you reach new depths. Techs are permanent and survive Collapse. Reach deeper to fund the tree.")
+            Text("Research Points trickle in as you dig. Techs are permanent and survive Collapse. Dig deeper for faster RP.")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(DDMPalette.textSecondary)
                 .multilineTextAlignment(.center)
             HStack(spacing: 0) {
-                infoCol("RP / depth", "depth^1.25")
+                infoCol("RP / sec", "\(DDMFormat.number(Double(store.save.depth) / 50.0))")
                 divider
                 infoCol("Lifetime RP", DDMFormat.number(store.save.lifetimeResearch))
                 divider
