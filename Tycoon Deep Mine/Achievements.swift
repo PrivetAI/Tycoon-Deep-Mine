@@ -111,9 +111,8 @@ struct DDMAchievement: Identifiable {
         oreGoal("o_iron", "Iron Veins", .iron, 300),
         oreGoal("o_gold", "Mother Lode", .gold, 200),
         oreGoal("o_diamond", "Diamond Hands", .diamond, 50),
-        oreGoal("o_obsidian", "Heart of Stone", .obsidian, 25),
-        oreGoal("o_voidstone", "Void Harvest", .voidstone, 25),
-        oreGoal("o_aetherium", "Aether Refined", .aetherium, 10),
+        oreGoal("o_sapphire", "Sapphire Seam", .sapphire, 25),
+        oreGoal("o_emerald", "Emerald Vein", .emerald, 25),
 
         bossGoal("b_1", "Gatebreaker", 1),
         bossGoal("b_5", "Bedrock Bane", 5),

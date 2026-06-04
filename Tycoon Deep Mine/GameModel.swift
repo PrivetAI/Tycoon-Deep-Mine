@@ -13,12 +13,6 @@ enum DDMOre: Int, CaseIterable, Codable {
     case emerald
     case sapphire
     case diamond
-    case mithril    // exotic
-    case obsidian   // exotic
-    case adamantite // deep exotic
-    case voidstone  // deep exotic
-    case starmetal  // deep exotic
-    case aetherium  // deepest exotic
 
     var name: String {
         switch self {
@@ -27,63 +21,43 @@ enum DDMOre: Int, CaseIterable, Codable {
         case .tin: return "Tin"
         case .iron: return "Iron"
         case .silver: return "Silver"
-        case .gold: return "Gold Ore"
+        case .gold: return "Gold"
         case .ruby: return "Ruby"
         case .emerald: return "Emerald"
         case .sapphire: return "Sapphire"
         case .diamond: return "Diamond"
-        case .mithril: return "Mithril"
-        case .obsidian: return "Obsidian"
-        case .adamantite: return "Adamantite"
-        case .voidstone: return "Voidstone"
-        case .starmetal: return "Starmetal"
-        case .aetherium: return "Aetherium"
         }
     }
 
-    // Base sell value per unit of ore. v14: ratio compressed to ×1.4 per tier.
-    // Total span coal=1 → aetherium=159 — gentle climb, gold growth instead comes from
-    // additive level counts across multiple bonus lines.
+    // Base sell value per unit of ore. v15: linear +1 per tier (spec §2,4).
     var baseValue: Double {
         switch self {
         case .coal: return 1
-        case .copper: return 1.4
-        case .tin: return 2
-        case .iron: return 2.8
-        case .silver: return 3.9
-        case .gold: return 5.5
-        case .ruby: return 7.7
-        case .emerald: return 10.8
-        case .sapphire: return 15.1
-        case .diamond: return 21.2
-        case .mithril: return 29.7
-        case .obsidian: return 41.5
-        case .adamantite: return 58
-        case .voidstone: return 81
-        case .starmetal: return 114
-        case .aetherium: return 159
+        case .copper: return 2
+        case .tin: return 3
+        case .iron: return 4
+        case .silver: return 5
+        case .gold: return 6
+        case .ruby: return 7
+        case .emerald: return 8
+        case .sapphire: return 9
+        case .diamond: return 10
         }
     }
 
-    // Depth (meters) at which this ore begins to appear.
+    // Depth (meters) at which this ore begins to appear. v15: aligned to zone boundaries (spec §6).
     var unlockDepth: Int {
         switch self {
         case .coal: return 0
-        case .copper: return 15
-        case .tin: return 40
-        case .iron: return 80
-        case .silver: return 140
-        case .gold: return 230
-        case .ruby: return 360
-        case .emerald: return 540
-        case .sapphire: return 780
-        case .diamond: return 1_100
-        case .mithril: return 1_500
-        case .obsidian: return 2_000
-        case .adamantite: return 2_700
-        case .voidstone: return 3_600
-        case .starmetal: return 4_800
-        case .aetherium: return 6_400
+        case .copper: return 100
+        case .tin: return 220
+        case .iron: return 400
+        case .silver: return 650
+        case .gold: return 1_000
+        case .ruby: return 1_500
+        case .emerald: return 2_200
+        case .sapphire: return 3_100
+        case .diamond: return 4_200
         }
     }
 
@@ -99,12 +73,6 @@ enum DDMOre: Int, CaseIterable, Codable {
         case .emerald: return Color(red: 0.20, green: 0.72, blue: 0.46)
         case .sapphire: return Color(red: 0.24, green: 0.42, blue: 0.86)
         case .diamond: return Color(red: 0.70, green: 0.90, blue: 0.96)
-        case .mithril: return Color(red: 0.60, green: 0.80, blue: 0.78)
-        case .obsidian: return Color(red: 0.32, green: 0.18, blue: 0.40)
-        case .adamantite: return Color(red: 0.48, green: 0.84, blue: 0.62)
-        case .voidstone: return Color(red: 0.30, green: 0.16, blue: 0.46)
-        case .starmetal: return Color(red: 0.62, green: 0.70, blue: 0.96)
-        case .aetherium: return Color(red: 0.96, green: 0.86, blue: 0.56)
         }
     }
 }
