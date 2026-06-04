@@ -154,32 +154,25 @@ final class DDMStore: ObservableObject {
         save.smelterUpgrades[kind.rawValue] ?? 0
     }
 
-    // Is the smelter unlocked at all? (any rate level)
-    var hasSmelter: Bool { smelterLevel(.rate) > 0 }
+    // Is the smelter unlocked at all? (any furnace level)
+    var hasSmelter: Bool { smelterLevel(.furnace) > 0 }
 
-    // Ore units fed into the furnace per second.
-    // smeltScience tech (+0.2 ore/s / level) wired in Task 17.
+    // Ore units fed into the furnace per second. Spec §9.
+    // base 0.5 + furnace*0.5 + smeltScience*0.2
     var smeltRate: Double {
-        let lvl = smelterLevel(.rate)
+        let lvl = smelterLevel(.furnace)
         if lvl <= 0 { return 0 }
-        let base = Double(lvl) * 1.5
-        let r = base  // smeltScience direct bonus added in Task 17
+        let base    = 0.5
+        let furnace = Double(lvl) * 0.5
+        let science = Double(techLevel(.smeltScience)) * 0.2
+        let r = base + furnace + science
         return r.isFinite ? max(0, r) : 0
     }
 
-    // Bars produced per ore unit smelted (Casting Molds).
-    var barYieldPerOre: Double {
-        let m = 1.0 + Double(smelterLevel(.batch)) * 0.08
-        return m.isFinite ? max(1.0, m) : 1.0
-    }
-
-    // Value multiplier applied to a bar vs the raw ore unit value.
-    // Bars are worth a large multiple of raw ore (the whole point of smelting), boosted
-    // by Bar Purity and the Assay tech.
+    /// Spec §9: bar value = ore.baseValue * 2.0, multiplied by the SAME bonusSum
+    /// every other gold source uses. No purity / batch / smelterCore chain.
     func barUnitValue(_ ore: DDMOre) -> Double {
-        // v15 Spec §4: ore.baseValue * 3.5 * bonusMultiplier.
-        // Purity chain removed here; Task 17 will change 3.5 → 2.0 and wire smelter rework.
-        let v = ore.baseValue * 3.5 * bonusMultiplier
+        let v = ore.baseValue * 2.0 * bonusMultiplier
         return v.isFinite ? max(0, v) : 0
     }
 
@@ -702,7 +695,7 @@ final class DDMStore: ObservableObject {
         let capacity = smeltRate * dt
         guard capacity > 0 else { return }
         var remaining = capacity
-        let yield = barYieldPerOre
+        let yield: Double = 1.0  // spec §9: 1 ore → 1 bar; batch upgrade removed
         for raw in save.oreCounts.keys.sorted(by: >) {
             let count = save.oreCounts[raw] ?? 0
             if count <= 0 { continue }
@@ -875,7 +868,7 @@ final class DDMStore: ObservableObject {
 
     // Convert ALL held ore to bars in one bounded pass (offline flush only).
     private func smeltAllSilent() {
-        let yield = barYieldPerOre
+        let yield: Double = 1.0  // spec §9: 1 ore → 1 bar; batch upgrade removed
         for (raw, count) in save.oreCounts where count > 0 {
             save.bars[raw] = (save.bars[raw] ?? 0) + count * yield
         }

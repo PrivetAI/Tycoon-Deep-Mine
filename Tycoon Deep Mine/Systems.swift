@@ -57,10 +57,8 @@ struct DDMTechDef: Identifiable {
 // multiple of the raw ore value. Upgrades (bought with GOLD) raise smelt rate and bar
 // value. The forge runs in the background like the cart.
 
-enum DDMSmelterKind: String, Codable, CaseIterable {
-    case rate     // ore units smelted per second
-    case barValue // bonus value on each bar
-    case batch    // bars produced per ore unit (yield)
+enum DDMSmelterKind: String, CaseIterable, Codable, Hashable {
+    case furnace
 }
 
 struct DDMSmelterDef: Identifiable {
@@ -79,15 +77,9 @@ struct DDMSmelterDef: Identifiable {
     }
 
     static let all: [DDMSmelterDef] = [
-        DDMSmelterDef(kind: .rate, title: "Furnace Intake",
-                      blurb: "+1.5 ore/s fed into the furnace per level.",
-                      baseCost: 8_000, costGrowth: 1.45, maxLevel: 9999),
-        DDMSmelterDef(kind: .barValue, title: "Bar Purity",
-                      blurb: "+12% value on every smelted bar per level.",
-                      baseCost: 15_000, costGrowth: 1.46, maxLevel: 9999),
-        DDMSmelterDef(kind: .batch, title: "Casting Molds",
-                      blurb: "+8% bar yield per ore unit per level.",
-                      baseCost: 25_000, costGrowth: 1.5, maxLevel: 60)
+        DDMSmelterDef(kind: .furnace, title: "Furnace",
+                      blurb: "+0.5 ore/s fed into the furnace per level.",
+                      baseCost: 8_000, costGrowth: 1.15, maxLevel: 9_999)
     ]
 
     static func def(_ kind: DDMSmelterKind) -> DDMSmelterDef {

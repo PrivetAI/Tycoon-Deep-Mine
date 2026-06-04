@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Smelter: raw ore -> bars (worth ~3.5x+). Gold-purchased upgrades. Sits as a section
+// Smelter: raw ore -> bars (worth 2× ore value). Gold-purchased Furnace upgrade. Sits as a section
 // reachable from the Upgrades tab via NavigationLink.
 struct SmelterView: View {
     @EnvironmentObject var store: DDMStore
@@ -45,14 +45,12 @@ struct SmelterView: View {
             Text("Smelt ore into bars")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
                 .foregroundColor(DDMPalette.textPrimary)
-            Text("The furnace converts raw ore into refined bars worth far more than the ore. Buy Furnace Intake to switch it on; the cart auto-sells finished bars.")
+            Text("The furnace converts raw ore into bars worth 2× the ore value. Buy Furnace to switch it on; the cart auto-sells finished bars.")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(DDMPalette.textSecondary)
                 .multilineTextAlignment(.center)
             HStack(spacing: 0) {
                 infoCol("Smelt /s", store.hasSmelter ? DDMFormat.number(store.smeltRate) : "Off")
-                divider
-                infoCol("Bar Yield", String(format: "x%.2f", store.barYieldPerOre))
                 divider
                 infoCol("Held Bars", DDMFormat.number(store.totalHeldBars))
             }
