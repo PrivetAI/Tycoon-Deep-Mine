@@ -26,8 +26,8 @@ final class DDMStore: ObservableObject {
     //   * Zone goldMult / oreMult ELIMINATED (zones are purely cosmetic + hpMult)
     //   * Cost growth UNIFORM 1.15 (Cookie Clicker)
     //   * Gem prestige LINEAR: floor(runMaxDepth / 100), each gem +1% on both sums
-    //   * Tap = (1 + L*0.5) * (1 + damageBonusSum). Drill perDrill = 0.5 + sums.
-    //   * goldBonusSum / damageBonusSum are the ONLY composite multipliers anywhere.
+    //   * Tap = (1 + L*0.5) * bonusMultiplier. Drill perDrill = 0.5 + speed/turbo addends.
+    //   * bonusSum (capped +300%) is the ONLY composite multiplier anywhere (Spec §2).
     private static let saveKey = "ddm.save.v14"
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
@@ -53,34 +53,34 @@ final class DDMStore: ObservableObject {
         save.globals[kind.rawValue] ?? 0
     }
 
-    // --- v10: SINGLE BONUS SUMS ---
-    // All "amplifier" upgrades contribute their per-level bonus to ONE sum per system
-    // (gold side / damage side). Final multiplier is (1 + sum). Linear in total level
-    // count, not exponential in product-of-multipliers.
+    // --- v15: SINGLE UNIFIED BONUS SUM (Spec §2 invariant 1) ---
+    // All amplifier upgrades feed one bonusSum. Final multiplier is (1 + bonusSum).
+    // Hard-capped at +300% (raw ≤ 3.0, multiplier ≤ 4.0×). Linear in level count,
+    // not exponential in product-of-multipliers. Gold AND damage share the same bucket.
 
-    /// Sum of all gold-side per-level bonuses (applied as (1 + goldBonusSum) on gold income).
-    /// Per-ore mastery is added inline in oreUnitValue(_:) since it's per-ore-type.
-    /// v14: rates tuned for full-rewrite economy. Each entry is the +% per level / gem.
-    var goldBonusSum: Double {
-        Double(upgradeLevel(.oreValue))     * 0.10 +   // Ore Grader: +10% per level
-        Double(upgradeLevel(.refiner))      * 0.05 +   // Refiner: +5% per level
-        Double(techLevel(.assayers))        * 0.03 +   // Assayers (tech): +3%
-        Double(max(0, save.gems))           * 0.01     // each gem: +1%
+    /// Spec §2 invariant 1: the ONLY multiplicative bucket on gold AND damage.
+    /// Hard-capped at +300% (raw value <= 3.0, final multiplier <= 4.0x).
+    var bonusSum: Double {
+        let oreGrader   = Double(upgradeLevel(.oreValue)) * 0.05  // Ore Grader: +5% per level
+        let refiner     = Double(upgradeLevel(.refiner))  * 0.03  // Refiner: +3% per level
+        let sharpTools  = 0.0   // wired in Task 16
+        let veinMapping = 0.0   // wired in Task 16
+        let gemBonus    = Double(max(0, save.gems)) * 0.005       // each gem: +0.5%
+        let raw = oreGrader + refiner + sharpTools + veinMapping + gemBonus
+        precondition(raw >= 0, "bonusSum components must be non-negative")
+        return min(raw, 3.0)
     }
 
-    /// Sum of all damage-side per-level bonuses (applied as (1 + damageBonusSum) on tap & auto).
-    var damageBonusSum: Double {
-        Double(techLevel(.sharpTools))      * 0.03 +
-        Double(max(0, save.gems))           * 0.01
-    }
+    /// Convenience: the final multiplier applied at every site.
+    var bonusMultiplier: Double { 1.0 + bonusSum }
 
     // --- Compatibility shims for existing call sites ---
     // These properties used to be the multiplicative chains; now they return the
     // sum-based equivalent so HUD / preview code keeps compiling and showing a useful
-    // number. Internal call sites have been updated to use the sums directly.
-    var gemMultiplier: Double { 1.0 + Double(max(0, save.gems)) * 0.01 }
-    var yieldMultiplier: Double { 1.0 + goldBonusSum }
-    var damageMultiplier: Double { 1.0 + damageBonusSum }
+    // number. Internal call sites have been updated to use bonusMultiplier directly.
+    var gemMultiplier: Double { 1.0 + Double(max(0, save.gems)) * 0.005 }
+    var yieldMultiplier: Double { bonusMultiplier }
+    var damageMultiplier: Double { bonusMultiplier }
 
     // Number of strikes a single tap delivers (Multi-Strike).
     var tapStrikes: Int {
@@ -92,7 +92,7 @@ final class DDMStore: ObservableObject {
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
         let base = 1.0 + Double(lvl) * 0.5
-        let d = base * (1.0 + damageBonusSum)
+        let d = base * bonusMultiplier
         return d.isFinite ? max(1, d) : 1
     }
 
@@ -105,7 +105,7 @@ final class DDMStore: ObservableObject {
 
     // Auto drill damage per second. v15: each drill outputs (0.5 + speed*0.10 +
     // turbo*0.05) DPS — additive contributions. Total = drillCount ×
-    // perDrill × (1 + damageBonusSum). One product, two factors, no chains.
+    // perDrill × bonusMultiplier. One product, two factors, no chains.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
         let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 1.0
@@ -113,7 +113,7 @@ final class DDMStore: ObservableObject {
         let perDrill = 0.5 +
             Double(upgradeLevel(.drillSpeed))      * 0.10 +
             Double(techLevel(.turboDrills))        * 0.05
-        let dps = count * perDrill * (1.0 + damageBonusSum)
+        let dps = count * perDrill * bonusMultiplier
         return dps.isFinite ? max(0, dps) : 0
     }
 
@@ -130,10 +130,10 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(0, d) : 0
     }
 
-    var oreValueMultiplier: Double { 1.0 + goldBonusSum }
-    // Per-unit ore value. Single (1 + goldBonusSum) multiplier.
+    var oreValueMultiplier: Double { bonusMultiplier }
+    // Per-unit ore value. Single bonusMultiplier applied here; no re-application downstream.
     func oreUnitValue(_ ore: DDMOre) -> Double {
-        let v = ore.baseValue * (1.0 + goldBonusSum)
+        let v = ore.baseValue * bonusMultiplier
         return v.isFinite ? max(0, v) : 0
     }
 
@@ -194,9 +194,9 @@ final class DDMStore: ObservableObject {
     // Bars are worth a large multiple of raw ore (the whole point of smelting), boosted
     // by Bar Purity and the Assay tech.
     func barUnitValue(_ ore: DDMOre) -> Double {
-        let purity = 1.0 + Double(smelterLevel(.barValue)) * 0.12
-        // base bar premium: 3.5x raw ore value
-        let v = oreUnitValue(ore) * 3.5 * purity
+        // v15 Spec §4: ore.baseValue * 3.5 * bonusMultiplier.
+        // Purity chain removed here; Task 17 will change 3.5 → 2.0 and wire smelter rework.
+        let v = ore.baseValue * 3.5 * bonusMultiplier
         return v.isFinite ? max(0, v) : 0
     }
 
@@ -255,7 +255,7 @@ final class DDMStore: ObservableObject {
     }
 
     private func estimatedBlockGold(_ b: DDMBlock) -> Double {
-        let bonus = 1.0 + goldBonusSum
+        let bonus = bonusMultiplier
         var g = b.rubbleGold * bonus
         if let ore = b.oreType {
             g += b.oreAmount * oreUnitValue(ore)
@@ -355,7 +355,7 @@ final class DDMStore: ObservableObject {
     private func awardBonus(_ block: DDMBlock) {
         guard block.kind != .normal else { return }
         if block.bonusGold > 0 {
-            addGold(block.bonusGold * (1.0 + goldBonusSum))
+            addGold(block.bonusGold * bonusMultiplier)
         }
         let gems = block.gemReward
         if gems > 0 {
@@ -377,7 +377,7 @@ final class DDMStore: ObservableObject {
             if save.claimedMilestones.contains(m) { continue }
             save.claimedMilestones.append(m)
             let r = DDMWorld.milestoneReward(m)
-            addGold(r.gold * (1.0 + goldBonusSum))
+            addGold(r.gold * bonusMultiplier)
             save.gems += r.gems
         }
         accrueResearch()
@@ -753,7 +753,7 @@ final class DDMStore: ObservableObject {
     }
 
     private func awardBlockContents(_ block: DDMBlock) {
-        addGold(block.rubbleGold * (1.0 + goldBonusSum))
+        addGold(block.rubbleGold * bonusMultiplier)
         if let ore = block.oreType, block.oreAmount > 0 {
             mineOre(ore, amount: block.oreAmount)
         }

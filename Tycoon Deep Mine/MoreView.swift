@@ -65,6 +65,12 @@ struct MoreView: View {
                     }
                     .padding(.top, 4)
 
+                    #if DEBUG
+                    Text(String(format: "bonusSum: %.2f / 3.00", store.bonusSum))
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(.secondary)
+                    #endif
+
                     Color.clear.frame(height: 8)
                 }
                 .padding(.horizontal, 18)

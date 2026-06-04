@@ -453,7 +453,7 @@ enum DDMWorld {
         let topIndex = (unlocked.last?.rawValue ?? 0)
 
         // v14: fixed 35% ore chance, FIXED 1 unit drop amount (no depth slope). Ore
-        // VALUE scales via the ×1.4 tier ladder + goldBonusSum. Predictable.
+        // VALUE scales via the ×1.4 tier ladder + bonusMultiplier (Spec §2). Predictable.
         let oreChance = 0.35
         var oreType: DDMOre? = nil
         var oreAmount: Double = 0
