@@ -353,6 +353,10 @@ struct DDMSave: Codable {
     var smelterUpgrades: [String: Int] = [:] // smelter upgrade kind raw -> level
     var lifetimeBarsValue: Double = 0
 
+    // --- Save version / migration ---
+    var version: Int = 15
+    var migrationGiftApplied: Bool = false  // true once the v14→v15 gem gift has been credited
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -385,6 +389,9 @@ struct DDMSave: Codable {
         bars = try c.decodeIfPresent([Int: Double].self, forKey: .bars) ?? [:]
         smelterUpgrades = try c.decodeIfPresent([String: Int].self, forKey: .smelterUpgrades) ?? [:]
         lifetimeBarsValue = try c.decodeIfPresent(Double.self, forKey: .lifetimeBarsValue) ?? 0
+        // Save version / migration
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 14
+        migrationGiftApplied = try c.decodeIfPresent(Bool.self, forKey: .migrationGiftApplied) ?? false
     }
 }
 

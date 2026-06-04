@@ -28,7 +28,8 @@ final class DDMStore: ObservableObject {
     //   * Gem prestige SUB-LINEAR: floor((runMaxDepth/100)^0.7), gated at depth>=100 (spec §7)
     //   * Tap = (1 + L*0.5) * bonusMultiplier. Drill perDrill = 0.5 + speed/turbo addends.
     //   * bonusSum (capped +300%) is the ONLY composite multiplier anywhere (Spec §2).
-    private static let saveKey = "ddm.save.v14"
+    private static let saveKey = "ddm.save.v15"
+    private static let saveKeyV14 = "ddm.save.v14"   // legacy – read-once for migration
     private static let achKey = "ddm.achievements.v1"
     private static let settingsKey = "ddm.settings.v1"
 
@@ -947,9 +948,21 @@ final class DDMStore: ObservableObject {
 
     private func load() {
         let d = UserDefaults.standard
+        // Try the new v15 key first.
         if let data = d.data(forKey: Self.saveKey),
            let decoded = try? JSONDecoder().decode(DDMSave.self, from: data) {
             save = decoded
+            if !save.migrationGiftApplied { applyMigrationGiftIfNeeded() }
+        } else if let oldData = d.data(forKey: Self.saveKeyV14),
+                  let oldDecoded = try? JSONDecoder().decode(DDMSave.self, from: oldData) {
+            // No v15 save yet — migrate from v14.
+            // decodeIfPresent already handles unknown/extra keys in the old blob.
+            migrateV14ToV15(from: oldDecoded)
+        } else {
+            // Brand-new install.
+            save = DDMSave()
+            save.version = 15
+            persist()
         }
         if let data = d.data(forKey: Self.achKey),
            let arr = try? JSONDecoder().decode([String].self, from: data) {
@@ -959,6 +972,40 @@ final class DDMStore: ObservableObject {
            let decoded = try? JSONDecoder().decode(DDMSettings.self, from: data) {
             settings = decoded
         }
+    }
+
+    /// Spec §11: wipe gameplay state, keep lifetime stats, credit one-time gem gift.
+    private func migrateV14ToV15(from old: DDMSave) {
+        let lifetime = old.lifetimeGoldEarned
+        save = DDMSave()           // fresh state
+        save.version = 15
+        // Keep lifetime stats.
+        save.lifetimeGoldEarned = lifetime
+        save.lifetimeOreSold = old.lifetimeOreSold
+        save.oreMinedTotals = old.oreMinedTotals
+        save.totalTaps = old.totalTaps
+        save.totalCollapses = old.totalCollapses
+        save.lifetimeBarsValue = old.lifetimeBarsValue
+        save.lifetimeResearch = old.lifetimeResearch
+        save.bossesDefeated = old.bossesDefeated
+        save.treasuresFound = old.treasuresFound
+        // Gift gems: min(50, floor(log10(max(1, lifetimeGoldEarned)) * 5))
+        let giftRaw = Foundation.log10(Swift.max(1.0, lifetime)) * 5.0
+        let gift = Int(Swift.min(50.0, Foundation.floor(giftRaw)))
+        save.gems = gift
+        save.migrationGiftApplied = true
+        persist()
+        // Achievements are stored under their own key (achKey) and survive unchanged.
+    }
+
+    private func applyMigrationGiftIfNeeded() {
+        guard !save.migrationGiftApplied else { return }
+        let lifetime = save.lifetimeGoldEarned
+        let giftRaw = Foundation.log10(Swift.max(1.0, lifetime)) * 5.0
+        let gift = Int(Swift.min(50.0, Foundation.floor(giftRaw)))
+        save.gems += gift
+        save.migrationGiftApplied = true
+        persist()
     }
 
     func resetProgress() {
