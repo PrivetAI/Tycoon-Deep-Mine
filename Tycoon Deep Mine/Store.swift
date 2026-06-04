@@ -25,7 +25,7 @@ final class DDMStore: ObservableObject {
     //   * Ore tier ratio ×1.4 per tier (was ×3.5 → ×2.0 → ×1.5 → finally ×1.4)
     //   * Zone goldMult / oreMult ELIMINATED (zones are purely cosmetic + hpMult)
     //   * Cost growth UNIFORM 1.15 (Cookie Clicker)
-    //   * Gem prestige LINEAR: floor(runMaxDepth / 100), each gem +1% on both sums
+    //   * Gem prestige SUB-LINEAR: floor((runMaxDepth/100)^0.7), gated at depth>=100 (spec §7)
     //   * Tap = (1 + L*0.5) * bonusMultiplier. Drill perDrill = 0.5 + speed/turbo addends.
     //   * bonusSum (capped +300%) is the ONLY composite multiplier anywhere (Spec §2).
     private static let saveKey = "ddm.save.v14"
@@ -579,17 +579,16 @@ final class DDMStore: ObservableObject {
 
     // MARK: - Prestige (Collapse)
 
-    // Gems earned from a collapse. v14: LINEAR in depth — floor(runMaxDepth / 100).
-    // d=100 = 1 gem, d=500 = 5, d=1000 = 10, d=5000 = 50. No exponential power.
+    /// Spec §7: sub-linear so long runs cannot farm explosively.
+    /// d=100 → 1 gem, d=500 → 3, d=1000 → 5, d=5000 → 16, d=20000 → 44.
     var pendingGems: Int {
-        let base = Double(max(0, save.runMaxDepth)) / 100.0
-        if !base.isFinite || base < 0 { return 0 }
-        return max(0, Int(base))
+        let m = max(0, save.runMaxDepth)
+        guard m >= 100 else { return 0 }
+        let raw = pow(Double(m) / 100.0, 0.7)
+        return Int(floor(raw))
     }
 
-    var canCollapse: Bool {
-        pendingGems > 0
-    }
+    var canCollapse: Bool { pendingGems >= 1 }
 
     // The starting depth for a fresh run, including Shaft Head Start (gems). Clamped to keep it finite.
     var runStartDepth: Int {
@@ -610,11 +609,9 @@ final class DDMStore: ObservableObject {
     func collapse() {
         let gained = pendingGems
         guard gained > 0 else { return }
+        // §7 step 1: bank gems.
         save.gems += gained
         save.totalCollapses += 1
-        // Bank the ore-sold counter so re-collapse without new sales gives ~0 gems.
-        save.oreSoldClaimed = save.lifetimeOreSold
-
         resetRun()
         if settings.hapticsOn { DDMHaptics.heavy() }
         checkAchievements()
@@ -622,18 +619,27 @@ final class DDMStore: ObservableObject {
         objectWillChange.send()
     }
 
-    // Reset run-scoped state. Keeps gems, globals, research, achievements and lifetime totals.
+    // Reset run-scoped state per spec §7.
+    // RESETS: gold, currentDepth (→ runStartDepth), runMaxDepth (→ 0 then set to startDepth),
+    //         in-flight ore + bars, run upgrades (save.upgrades), smelter upgrades (save.smelterUpgrades).
+    // PRESERVES: save.gems, save.globals (permanent gem shop), save.techs (research),
+    //            lifetime stats, achievements.
     private func resetRun() {
-        let startDepth = runStartDepth
-        save.depth = startDepth
-        save.runMaxDepth = startDepth
-        if startDepth > save.maxDepth { save.maxDepth = startDepth }
+        // §7 step 2: run-scoped state
         save.gold = 0
         save.oreCounts = [:]
         save.bars = [:]
         save.currentBlockHP = -1
+        save.runMaxDepth = 0
+        // §7 step 3: run-scoped upgrades (the 8 gold-bought upgrades)
         save.upgrades = [:]
-        save.smelterUpgrades = [:]   // smelter is a run-scoped gold investment
+        // §7 step 4: smelter run-state
+        save.smelterUpgrades = [:]
+        // §7 step 6: apply permanent perks at run start
+        let startDepth = runStartDepth
+        save.depth = startDepth
+        save.runMaxDepth = startDepth
+        if startDepth > save.maxDepth { save.maxDepth = startDepth }
         applyRunHeadStart()
         rebuildCurrentBlock()
     }
