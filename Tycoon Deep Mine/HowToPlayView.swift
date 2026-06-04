@@ -11,26 +11,14 @@ struct HowToPlayView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         step(icon: AnyView(DDMPickaxeShape(color: DDMPalette.accentDeep, handle: DDMPalette.dirt, size: 30)),
-                             title: "Tap to Dig",
-                             body: "Tap the rock face to swing your pickaxe. Each tap chips away the block's HP. Clear it to drop ore and descend one meter deeper.")
-                        step(icon: AnyView(DDMOreChunk(color: DDMPalette.gold, size: 30)),
-                             title: "Collect & Sell Ore",
-                             body: "Blocks may hold ore veins — coal, copper, iron, gold, gems and rarer ores the deeper you go. Sell ore for gold from the Mine screen.")
+                             title: "Mining",
+                             body: "Tap or let drills mine blocks. HP grows linearly with depth — 20 + 2 × depth. Bosses (last block of each zone) have ×4 HP and ×3 gold. 10 zones, each unlocking a new ore tier (Coal → Diamond, value 1 → 10).")
                         step(icon: AnyView(DDMTabUpgradeIcon(color: DDMPalette.gemDeep, size: 28)),
-                             title: "Buy Upgrades",
-                             body: "Spend gold on Pickaxe Power for bigger taps, Drill Rigs for automatic digging, Mine Carts for auto-selling, and Ore Graders to raise sell value.")
+                             title: "Upgrades",
+                             body: "Every upgrade costs ×1.15 more per level. Ore Grader and Refiner add to a shared bonus, capped at +300 %. Gold and damage share the same multiplier.")
                         step(icon: AnyView(DDMGemBadge(size: 28)),
-                             title: "Collapse for Gems",
-                             body: "When you've dug deep, Collapse the mine to convert your progress into Gems. Each gem permanently boosts all future yield. Spend gems on permanent upgrades.")
-                        step(icon: AnyView(DDMChevron(color: DDMPalette.accentDeep, size: 28).rotationEffect(.degrees(90))),
-                             title: "Dig Deeper",
-                             body: "Deeper rock is tougher but holds richer ore. Build up auto-drills so the mine keeps working even while you're away — collect your offline earnings when you return.")
-                        step(icon: AnyView(DDMChestView(size: 30)),
-                             title: "Zones, Gates & Geodes",
-                             body: "Descend through 10 strata — Surface, Stone Shelf, Crystal Caverns, Magma Veins, Abyss, World's Core, Mantle Forge, Void Rift, Stellar Vault, and Aether Wellspring. Each zone ends in a tough bedrock gate; pop Dynamite Charges to smash through for big rewards. Watch for glowing geodes packed with bonus gold, ore and gems.")
-                        step(icon: AnyView(DDMMedalShape(color: DDMPalette.amber, size: 30)),
-                             title: "Earn Awards",
-                             body: "Hit depth, gold, ore and collapse milestones to unlock achievements in the Awards tab.")
+                             title: "Prestige",
+                             body: "Reach deeper to collapse. Gems = floor((max depth / 100)^0.7). Each gem permanently gives +0.5 % bonus (shared cap). Spend gems on Shaft Head Start, Standing Drill, Wide Pan, Night Shift, and Seed Vault.")
                         Color.clear.frame(height: 20)
                     }
                     .padding(20)

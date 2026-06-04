@@ -90,6 +90,13 @@ struct CollapseView: View {
             }
             .buttonStyle(.plain)
             .disabled(!store.canCollapse)
+
+            Text("+\(store.pendingGems) gem\(store.pendingGems == 1 ? "" : "s") on collapse")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundColor(DDMPalette.gold)
+            Text("Max depth this run: \(DDMFormat.depth(store.save.runMaxDepth))")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundColor(DDMPalette.textMuted)
         }
         .padding(18)
         .frame(maxWidth: .infinity)

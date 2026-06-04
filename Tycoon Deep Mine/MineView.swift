@@ -225,6 +225,10 @@ struct MineView: View {
             }
             .padding(.horizontal, 16)
 
+            // bonus bar — shows combined bonusSum vs the +300% cap
+            bonusBar
+                .padding(.horizontal, 16)
+
             // ore inventory
             oreInventory
 
@@ -255,6 +259,30 @@ struct MineView: View {
         }
         .padding(.top, 10)
         .background(DDMPalette.cavern.edgesIgnoringSafeArea(.bottom))
+    }
+
+    private var bonusBar: some View {
+        HStack(spacing: 8) {
+            Text("BONUS")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .tracking(0.6)
+                .foregroundColor(DDMPalette.textMuted)
+                .frame(width: 42, alignment: .leading)
+            DDMProgressBar(progress: store.bonusSum / 3.0,
+                           fill: DDMPalette.gemDeep,
+                           track: DDMPalette.rockDark,
+                           height: 6)
+            Text("\(Int(store.bonusSum * 100))% / 300%")
+                .font(.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundColor(DDMPalette.textMuted)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(DDMPalette.background.opacity(0.6))
+        )
     }
 
     private func miniStat(_ label: String, _ value: String, _ color: Color) -> some View {
