@@ -87,11 +87,10 @@ final class DDMStore: ObservableObject {
         1 + upgradeLevel(.multiTap)
     }
 
-    // Per-strike tap (pickaxe) damage. v14: base 1 + 0.5/L. L0=1, L10=6, L20=11, L50=26.
-    // Linear scaling, predictable.
+    // Per-strike tap (pickaxe) damage. v15: base 1 + 1.0/L. L0=1, L10=11, L20=21. Spec §5.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 0.5
+        let base = 1.0 + Double(lvl) * 1.0
         let d = base * bonusMultiplier
         return d.isFinite ? max(1, d) : 1
     }
@@ -103,16 +102,14 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(1, d) : 1
     }
 
-    // Auto drill damage per second. v15: each drill outputs (0.5 + speed*0.10 +
-    // turbo*0.05) DPS — additive contributions. Total = drillCount ×
-    // perDrill × bonusMultiplier. One product, two factors, no chains.
+    // Auto drill damage per second. v15: count = drillCount + autoStart*2 free drills.
+    // perDrill = 0.5 + drillSpeed*0.2. Total = count × perDrill × bonusMultiplier. Spec §5.
+    // turboDrills tech contribution stubbed for Task 16.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
-        let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 1.0
+        let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 2.0
         if count <= 0 { return 0 }
-        let perDrill = 0.5 +
-            Double(upgradeLevel(.drillSpeed))      * 0.10 +
-            Double(techLevel(.turboDrills))        * 0.05
+        let perDrill = 0.5 + Double(upgradeLevel(.drillSpeed)) * 0.2
         let dps = count * perDrill * bonusMultiplier
         return dps.isFinite ? max(0, dps) : 0
     }
@@ -215,18 +212,22 @@ final class DDMStore: ObservableObject {
     }
 
     // Cart auto-collect & auto-sell rate (ore units / second processed). 0 = manual only.
-    // v13: halved from (L*1.5 + 1.0) to (L*0.5 + 0.5). Cart L2 was draining a 23K stash
-    // at ~4 ore/sec = ~50 g/sec passively into the gold counter while the HUD said
-    // Gold/s = 0 — the dominant non-perception driver of "ambient gold flow" complaints.
+    // v15: (cartLevel + widePan) * 0.5. No constant term. cartLogistics tech stubbed for Task 16.
+    // Spec §5.
     var cartRate: Double {
-        let lvl = upgradeLevel(.cart)
+        let lvl = upgradeLevel(.cart) + globalLevel(.widePan)
         if lvl <= 0 { return 0 }
-        let logistics = 1.0 + Double(techLevel(.logistics)) * 0.25
-        let r = (Double(lvl) * 0.5 + 0.5) * logistics
+        let techBonus = 0.0   // cartLogistics wired in Task 16
+        let r = Double(lvl) * 0.5 + techBonus
         return r.isFinite ? r : 0
     }
 
-    var hasAutoSell: Bool { upgradeLevel(.cart) > 0 }
+    // Cart capacity: 20 base + 5 per cart/widePan level. Spec §5.
+    var cartCapacity: Int {
+        return 20 + 5 * (upgradeLevel(.cart) + globalLevel(.widePan))
+    }
+
+    var hasAutoSell: Bool { cartRate > 0 }
 
     var offlineCapSeconds: Double {
         let baseHours = 2.0 + Double(globalLevel(.offlineCap)) * 2.0

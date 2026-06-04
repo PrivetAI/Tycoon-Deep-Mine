@@ -222,32 +222,32 @@ struct DDMUpgradeDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // v15 ladder. Cost growth UNIFORM 1.15 — Cookie Clicker territory.
+    // v15 ladder. Cost growth UNIFORM 1.15 — Cookie Clicker territory. Spec §5.
     static let all: [DDMUpgradeDef] = [
         DDMUpgradeDef(kind: .pickaxe, title: "Pickaxe Power",
-                      blurb: "+0.5 tap damage per level.",
-                      baseCost: 5, costGrowth: 1.15, maxLevel: 9999),
-        DDMUpgradeDef(kind: .cart, title: "Mine Cart",
-                      blurb: "Auto-collects and auto-sells mined ore.",
-                      baseCost: 30, costGrowth: 1.15, maxLevel: 9999),
+                      blurb: "+1 tap damage per level.",
+                      baseCost: 10, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillCount, title: "Drill Rig",
                       blurb: "Adds an auto-drill (+0.5 base DPS each).",
-                      baseCost: 100, costGrowth: 1.15, maxLevel: 9999),
+                      baseCost: 50, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillSpeed, title: "Drill Tuning",
-                      blurb: "+0.10 DPS per drill per level.",
-                      baseCost: 500, costGrowth: 1.15, maxLevel: 9999),
+                      blurb: "+0.2 DPS per drill per level.",
+                      baseCost: 250, costGrowth: 1.15, maxLevel: 9999),
+        DDMUpgradeDef(kind: .cart, title: "Mine Cart",
+                      blurb: "Auto-collects and auto-sells mined ore (+0.5 ore/s, +5 cap).",
+                      baseCost: 150, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .oreValue, title: "Ore Grader",
-                      blurb: "+10% ore sell value per level.",
-                      baseCost: 200, costGrowth: 1.15, maxLevel: 9999),
+                      blurb: "+5% to bonusSum per level.",
+                      baseCost: 500, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .refiner, title: "Refiner",
-                      blurb: "+5% sale gold per level.",
-                      baseCost: 800, costGrowth: 1.15, maxLevel: 9999),
-        DDMUpgradeDef(kind: .multiTap, title: "Multi-Strike",
-                      blurb: "Each tap lands +1 extra strike per level.",
-                      baseCost: 20_000, costGrowth: 1.15, maxLevel: 10),
+                      blurb: "+3% to bonusSum per level.",
+                      baseCost: 2_500, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .autoTapper, title: "Auto Pick",
                       blurb: "A mechanical arm auto-taps for you (+0.2/sec per level).",
-                      baseCost: 50_000, costGrowth: 1.15, maxLevel: 200)
+                      baseCost: 5_000, costGrowth: 1.15, maxLevel: 9999),
+        DDMUpgradeDef(kind: .multiTap, title: "Multi-Strike",
+                      blurb: "Each tap lands +1 extra strike per level (cap: 5 levels = 6 strikes).",
+                      baseCost: 100_000, costGrowth: 1.15, maxLevel: 5)
     ]
 
     static func def(_ kind: DDMUpgradeKind) -> DDMUpgradeDef {
