@@ -110,13 +110,4 @@ struct DDMSmelterDef: Identifiable {
     }
 }
 
-// Per-ore mastery cost: scales with the ore's tier so deep ores cost vastly more to master.
-enum DDMOreMastery {
-    static func cost(_ ore: DDMOre, level: Int) -> Double {
-        // base anchored to the ore's own value so mastery feels proportional, then steep growth.
-        let base = max(50.0, ore.baseValue * 4.0)
-        let c = base * pow(1.6, Double(level))
-        return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
-    }
-    static let maxLevel = 50
-}
+

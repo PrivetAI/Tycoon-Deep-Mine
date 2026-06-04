@@ -160,17 +160,9 @@ final class DDMStore: ObservableObject {
         1.0 + Double(upgradeLevel(.goldFind)) * 0.03
     }
     var oreValueMultiplier: Double { 1.0 + goldBonusSum }
-    func oreMasteryMultiplier(_ ore: DDMOre) -> Double {
-        let lvl = save.oreMastery[ore.rawValue] ?? 0
-        return 1.0 + Double(lvl) * 0.05
-    }
-
-    // Per-unit ore value. Single (1 + goldBonusSum + mastery*0.05) multiplier — no
-    // chains. Per-ore mastery is added inline so each ore type can have its own bonus
-    // without expanding goldBonusSum.
+    // Per-unit ore value. Single (1 + goldBonusSum) multiplier.
     func oreUnitValue(_ ore: DDMOre) -> Double {
-        let mastery = Double(save.oreMastery[ore.rawValue] ?? 0)
-        let v = ore.baseValue * (1.0 + goldBonusSum + mastery * 0.05)
+        let v = ore.baseValue * (1.0 + goldBonusSum)
         return v.isFinite ? max(0, v) : 0
     }
 
@@ -672,29 +664,6 @@ final class DDMStore: ObservableObject {
         throttledSaveTick(force: true)
     }
 
-    // --- Per-ore mastery (bought with Gold) ---
-
-    func oreMasteryCost(_ ore: DDMOre) -> Double {
-        DDMOreMastery.cost(ore, level: save.oreMastery[ore.rawValue] ?? 0)
-    }
-
-    func canBuyMastery(_ ore: DDMOre) -> Bool {
-        let lvl = save.oreMastery[ore.rawValue] ?? 0
-        if lvl >= DDMOreMastery.maxLevel { return false }
-        return save.gold >= oreMasteryCost(ore)
-    }
-
-    func buyMastery(_ ore: DDMOre) {
-        guard canBuyMastery(ore) else { return }
-        save.gold -= oreMasteryCost(ore)
-        if save.gold < 0 { save.gold = 0 }
-        save.oreMastery[ore.rawValue] = (save.oreMastery[ore.rawValue] ?? 0) + 1
-        if settings.hapticsOn { DDMHaptics.tap() }
-        checkAchievements()
-        throttledSaveTick(force: true)
-        objectWillChange.send()
-    }
-
     // MARK: - Prestige (Collapse)
 
     // Gems earned from a collapse. v14: LINEAR in depth — floor(runMaxDepth / 100).
@@ -752,7 +721,6 @@ final class DDMStore: ObservableObject {
         save.currentBlockHP = -1
         save.upgrades = [:]
         save.smelterUpgrades = [:]   // smelter is a run-scoped gold investment
-        save.oreMastery = [:]        // mastery is a run-scoped gold investment
         applyRunHeadStart()
         rebuildCurrentBlock()
     }

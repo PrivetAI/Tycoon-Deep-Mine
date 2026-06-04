@@ -438,9 +438,6 @@ struct DDMSave: Codable {
     var smelterUpgrades: [String: Int] = [:] // smelter upgrade kind raw -> level
     var lifetimeBarsValue: Double = 0
 
-    // --- Per-ore mastery ---
-    var oreMastery: [Int: Int] = [:]    // ore raw -> mastery level
-
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -473,8 +470,6 @@ struct DDMSave: Codable {
         bars = try c.decodeIfPresent([Int: Double].self, forKey: .bars) ?? [:]
         smelterUpgrades = try c.decodeIfPresent([String: Int].self, forKey: .smelterUpgrades) ?? [:]
         lifetimeBarsValue = try c.decodeIfPresent(Double.self, forKey: .lifetimeBarsValue) ?? 0
-        // additive — Per-ore mastery
-        oreMastery = try c.decodeIfPresent([Int: Int].self, forKey: .oreMastery) ?? [:]
     }
 }
 
