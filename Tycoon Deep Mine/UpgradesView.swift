@@ -38,17 +38,7 @@ struct UpgradesView: View {
                           color: DDMPalette.gemDeep)
             }
             .buttonStyle(.plain)
-            NavigationLink(destination: MasteryView()) {
-                systemRow(title: "Ore Mastery", subtitle: "Raise the value of each ore type",
-                          value: "\(masteryCount) ores",
-                          color: DDMPalette.accent)
-            }
-            .buttonStyle(.plain)
         }
-    }
-
-    private var masteryCount: Int {
-        DDMOre.allCases.filter { (store.save.oreMinedTotals[$0.rawValue] ?? 0) > 0 }.count
     }
 
     private func systemRow(title: String, subtitle: String, value: String, color: Color) -> some View {
