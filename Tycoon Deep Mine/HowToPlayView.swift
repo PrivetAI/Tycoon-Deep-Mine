@@ -27,7 +27,7 @@ struct HowToPlayView: View {
                              body: "Deeper rock is tougher but holds richer ore. Build up auto-drills so the mine keeps working even while you're away — collect your offline earnings when you return.")
                         step(icon: AnyView(DDMChestView(size: 30)),
                              title: "Zones, Gates & Geodes",
-                             body: "Descend through strata — Topsoil, Stone, Crystal Caverns, Magma, the Abyss and the Core. Each zone ends in a tough bedrock gate; pop Dynamite Charges to smash through for big rewards. Watch for glowing geodes packed with bonus gold, ore and gems.")
+                             body: "Descend through 10 strata — Surface, Stone Shelf, Crystal Caverns, Magma Veins, Abyss, World's Core, Mantle Forge, Void Rift, Stellar Vault, and Aether Wellspring. Each zone ends in a tough bedrock gate; pop Dynamite Charges to smash through for big rewards. Watch for glowing geodes packed with bonus gold, ore and gems.")
                         step(icon: AnyView(DDMMedalShape(color: DDMPalette.amber, size: 30)),
                              title: "Earn Awards",
                              body: "Hit depth, gold, ore and collapse milestones to unlock achievements in the Awards tab.")
