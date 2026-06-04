@@ -29,20 +29,20 @@ struct DDMTechDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // Spec §8: base cost, ×1.20 growth, cap level 30 for all techs.
+    // v15.1: tripled base costs, growth 1.25, effects halved.
     static let all: [DDMTechDef] = [
         DDMTechDef(kind: .sharpTools, title: "Sharpened Tools",
-                   blurb: "+1% to global bonus multiplier per level.",
-                   baseCost: 10, costGrowth: 1.20, maxLevel: 30),
+                   blurb: "+0.5% to global bonus multiplier per level.",
+                   baseCost: 30, costGrowth: 1.25, maxLevel: 30),
         DDMTechDef(kind: .veinMapping, title: "Vein Mapping",
-                   blurb: "+1% to global bonus multiplier per level.",
-                   baseCost: 12, costGrowth: 1.20, maxLevel: 30),
+                   blurb: "+0.5% to global bonus multiplier per level.",
+                   baseCost: 40, costGrowth: 1.25, maxLevel: 30),
         DDMTechDef(kind: .cartLogistics, title: "Cart Logistics",
-                   blurb: "+0.1 ore/s cart rate per level (direct).",
-                   baseCost: 15, costGrowth: 1.20, maxLevel: 30),
+                   blurb: "+0.05 ore/s cart rate per level (direct).",
+                   baseCost: 60, costGrowth: 1.25, maxLevel: 30),
         DDMTechDef(kind: .smeltScience, title: "Smelt Science",
-                   blurb: "+0.2 ore/s smelter throughput per level (direct).",
-                   baseCost: 20, costGrowth: 1.20, maxLevel: 30)
+                   blurb: "+0.1 ore/s smelter throughput per level (direct).",
+                   baseCost: 80, costGrowth: 1.25, maxLevel: 30)
     ]
 
     static func def(_ kind: DDMTechKind) -> DDMTechDef {
@@ -78,8 +78,8 @@ struct DDMSmelterDef: Identifiable {
 
     static let all: [DDMSmelterDef] = [
         DDMSmelterDef(kind: .furnace, title: "Furnace",
-                      blurb: "+0.5 ore/s fed into the furnace per level.",
-                      baseCost: 8_000, costGrowth: 1.15, maxLevel: 9_999)
+                      blurb: "+0.2 ore/s fed into the furnace per level.",
+                      baseCost: 25_000, costGrowth: 1.20, maxLevel: 9_999)
     ]
 
     static func def(_ kind: DDMSmelterKind) -> DDMSmelterDef {
