@@ -66,7 +66,6 @@ final class DDMStore: ObservableObject {
         Double(upgradeLevel(.refiner))      * 0.05 +   // Refiner: +5% per level
         Double(upgradeLevel(.goldFind))     * 0.03 +   // Prospect Sense: +3% per level
         Double(globalLevel(.yieldBoost))    * 0.10 +   // Deep Veins (global): +10%
-        Double(metaLevel(.goldVein))        * 0.05 +   // Gold Vein (meta): +5%
         Double(techLevel(.assayers))        * 0.03 +   // Assayers (tech): +3%
         Double(max(0, save.gems))           * 0.01     // each gem: +1%
     }
@@ -77,7 +76,6 @@ final class DDMStore: ObservableObject {
         let depthBands = min(50.0, Double(max(0, save.depth)) / 100.0)
         let depthContrib = Double(upgradeLevel(.depthScaling)) * 0.005 * depthBands
         return Double(globalLevel(.yieldBoost))    * 0.05 +   // half of gold (yield boost double-counts)
-               Double(metaLevel(.forceCore))       * 0.05 +
                Double(techLevel(.sharpTools))      * 0.03 +
                Double(max(0, save.gems))           * 0.01 +
                depthContrib
@@ -137,11 +135,10 @@ final class DDMStore: ObservableObject {
     }
 
     // Auto-tapper: mechanical arm that delivers tap-strength hits automatically.
-    // v14: +0.2 auto-taps/sec per level (was 0.5 — meta arm still gives 0.3 each).
+    // v14: +0.2 auto-taps/sec per level.
     var autoTapRate: Double {
         let lvl = upgradeLevel(.autoTapper)
-        let metaBonus = Double(metaLevel(.autoArm)) * 0.3
-        let r = Double(lvl) * 0.2 + metaBonus
+        let r = Double(lvl) * 0.2
         return r.isFinite ? max(0, r) : 0
     }
 
@@ -160,7 +157,7 @@ final class DDMStore: ObservableObject {
         return 1.0 + Double(upgradeLevel(.depthScaling)) * 0.005 * depthBands
     }
     var goldFindMultiplier: Double {
-        1.0 + Double(upgradeLevel(.goldFind)) * 0.03 + Double(metaLevel(.goldVein)) * 0.10
+        1.0 + Double(upgradeLevel(.goldFind)) * 0.03
     }
     var oreValueMultiplier: Double { 1.0 + goldBonusSum }
     func oreMasteryMultiplier(_ ore: DDMOre) -> Double {
@@ -175,29 +172,6 @@ final class DDMStore: ObservableObject {
         let mastery = Double(save.oreMastery[ore.rawValue] ?? 0)
         let v = ore.baseValue * (1.0 + goldBonusSum + mastery * 0.05)
         return v.isFinite ? max(0, v) : 0
-    }
-
-    // MARK: - Meta (Cores) derived stats
-
-    func metaLevel(_ kind: DDMMetaKind) -> Int {
-        save.metaTree[kind.rawValue] ?? 0
-    }
-
-    // Global gold multiplier from the meta-tree (persists through collapse).
-    var metaGoldMultiplier: Double {
-        let m = 1.0 + Double(metaLevel(.goldVein)) * 0.10
-        return m.isFinite ? max(1.0, m) : 1.0
-    }
-
-    var metaDamageMultiplier: Double {
-        let m = 1.0 + Double(metaLevel(.forceCore)) * 0.10
-        return m.isFinite ? max(1.0, m) : 1.0
-    }
-
-    // Bonus to gems gained per collapse.
-    var metaGemMultiplier: Double {
-        let m = 1.0 + Double(metaLevel(.gemResonance)) * 0.08
-        return m.isFinite ? max(1.0, m) : 1.0
     }
 
     // MARK: - Research derived stats
@@ -218,12 +192,10 @@ final class DDMStore: ObservableObject {
         return assay.isFinite ? max(1.0, assay) : 1.0
     }
 
-    // Research point earn-rate multiplier (globals + meta + Field Lab).
+    // Research point earn-rate multiplier (globals + Field Lab).
     var researchRateMultiplier: Double {
         let lab = 1.0 + Double(globalLevel(.researchRate)) * 0.20
-        let know = 1.0 + Double(metaLevel(.research)) * 0.15
-        let m = lab * know
-        return m.isFinite ? max(1.0, m) : 1.0
+        return lab.isFinite ? max(1.0, lab) : 1.0
     }
 
     // Upgrade-cost discount from Lean Engineering (diminishing, capped ~ -36%).
@@ -263,12 +235,11 @@ final class DDMStore: ObservableObject {
 
     // Value multiplier applied to a bar vs the raw ore unit value.
     // Bars are worth a large multiple of raw ore (the whole point of smelting), boosted
-    // by Bar Purity, the Forge Heart meta perk and the Assay tech.
+    // by Bar Purity and the Assay tech.
     func barUnitValue(_ ore: DDMOre) -> Double {
         let purity = 1.0 + Double(smelterLevel(.barValue)) * 0.12
-        let forge = 1.0 + Double(metaLevel(.smelterCore)) * 0.12
         // base bar premium: 3.5x raw ore value
-        let v = oreUnitValue(ore) * 3.5 * purity * forge
+        let v = oreUnitValue(ore) * 3.5 * purity
         return v.isFinite ? max(0, v) : 0
     }
 
@@ -724,60 +695,28 @@ final class DDMStore: ObservableObject {
         objectWillChange.send()
     }
 
-    // --- Meta perks (bought with Cores) ---
-
-    func metaCost(_ kind: DDMMetaKind) -> Int {
-        DDMMetaDef.def(kind).cost(at: metaLevel(kind))
-    }
-
-    func canBuyMeta(_ kind: DDMMetaKind) -> Bool {
-        let def = DDMMetaDef.def(kind)
-        let lvl = metaLevel(kind)
-        if lvl >= def.maxLevel { return false }
-        return save.cores >= metaCost(kind)
-    }
-
-    func buyMeta(_ kind: DDMMetaKind) {
-        guard canBuyMeta(kind) else { return }
-        save.cores -= metaCost(kind)
-        if save.cores < 0 { save.cores = 0 }
-        save.metaTree[kind.rawValue] = metaLevel(kind) + 1
-        if settings.hapticsOn { DDMHaptics.success() }
-        checkAchievements()
-        throttledSaveTick(force: true)
-        objectWillChange.send()
-    }
-
     // MARK: - Prestige (Collapse)
 
     // Gems earned from a collapse. v14: LINEAR in depth — floor(runMaxDepth / 100).
-    // d=100 = 1 gem, d=500 = 5, d=1000 = 10, d=5000 = 50. metaGemMultiplier (gem
-    // resonance perk) still applies as a small additive bonus. No exponential power.
+    // d=100 = 1 gem, d=500 = 5, d=1000 = 10, d=5000 = 50. No exponential power.
     var pendingGems: Int {
         let base = Double(max(0, save.runMaxDepth)) / 100.0
-        let raw = base * metaGemMultiplier
-        if !raw.isFinite || raw < 0 { return 0 }
-        return max(0, Int(raw))
+        if !base.isFinite || base < 0 { return 0 }
+        return max(0, Int(base))
     }
 
     var canCollapse: Bool {
         pendingGems > 0
     }
 
-    // The starting depth for a fresh run, including Shaft Head Start (gems) and the
-    // Fault Line meta perk (cores). Clamped to keep it finite.
+    // The starting depth for a fresh run, including Shaft Head Start (gems). Clamped to keep it finite.
     var runStartDepth: Int {
-        let d = globalLevel(.startDepth) * 15 + metaLevel(.deepStart) * 40
+        let d = globalLevel(.startDepth) * 15
         return max(0, min(50_000, d))
     }
 
-    // Free upgrade levels granted at run start by the Prepared Shaft meta perk.
+    // Apply run-start bonuses (Seed Vault global perk).
     private func applyRunHeadStart() {
-        let bonus = metaLevel(.headStart) * 5
-        if bonus > 0 {
-            save.upgrades[DDMUpgradeKind.pickaxe.rawValue] = bonus
-            save.upgrades[DDMUpgradeKind.drillCount.rawValue] = bonus
-        }
         // Seed Vault: start with a gold stake (scales modestly with level).
         let seedLevels = globalLevel(.startGold)
         if seedLevels > 0 {
@@ -801,8 +740,7 @@ final class DDMStore: ObservableObject {
         objectWillChange.send()
     }
 
-    // Reset run-scoped state (shared by Collapse and Tectonic Shift). Keeps gems, globals,
-    // meta-tree, research, achievements and lifetime totals unless the caller clears them.
+    // Reset run-scoped state. Keeps gems, globals, research, achievements and lifetime totals.
     private func resetRun() {
         let startDepth = runStartDepth
         save.depth = startDepth
@@ -817,54 +755,6 @@ final class DDMStore: ObservableObject {
         save.oreMastery = [:]        // mastery is a run-scoped gold investment
         applyRunHeadStart()
         rebuildCurrentBlock()
-    }
-
-    // MARK: - Tectonic Shift (second prestige → Cores)
-
-    // Cores earned from a Shift, based on BANKED prestige progress since the last shift:
-    //   gems accumulated + collapses performed. Banked counters (gemsClaimedForCores /
-    //   collapsesClaimedForCores) make repeat shifts with no new progress give ~0 — no
-    //   farming exploit, mirroring oreSoldClaimed.
-    var pendingCores: Int {
-        let newGems = max(0, save.gems - save.gemsClaimedForCores)
-        let newCollapses = max(0, save.totalCollapses - save.collapsesClaimedForCores)
-        let gemPart = pow(Double(newGems) / 60.0, 0.62)
-        let colPart = Double(newCollapses) * 0.30
-        let raw = gemPart + colPart
-        if !raw.isFinite || raw < 0 { return 0 }
-        return max(0, Int(raw))
-    }
-
-    // Gate the shift so it can't be spammed at trivial progress.
-    var canShift: Bool {
-        pendingCores >= 1 && (save.gems - save.gemsClaimedForCores) >= 60
-    }
-
-    func tectonicShift() {
-        let gained = pendingCores
-        guard gained >= 1, canShift else { return }
-        save.cores += gained
-        var lc = save.lifetimeCores + gained
-        if lc < 0 { lc = save.lifetimeCores }
-        save.lifetimeCores = lc
-        save.totalShifts += 1
-
-        // A Shift clears gems + gem globals + the whole run, but keeps Cores, the meta-tree,
-        // research + techs, achievements and lifetime totals.
-        save.gems = 0
-        save.globals = [:]
-        // Bank the conversion basis to the POST-shift values (gems = 0, collapses = current)
-        // so future gem/collapse accumulation counts toward the next shift immediately —
-        // no need to re-earn the spent total, and repeat shifts at zero progress give ~0.
-        save.gemsClaimedForCores = save.gems
-        save.collapsesClaimedForCores = save.totalCollapses
-        save.oreSoldClaimed = save.lifetimeOreSold // gems reset → next collapse basis fresh
-        resetRun()
-
-        if settings.hapticsOn { DDMHaptics.heavy() }
-        checkAchievements()
-        throttledSaveTick(force: true)
-        objectWillChange.send()
     }
 
     // MARK: - Timer / auto loop

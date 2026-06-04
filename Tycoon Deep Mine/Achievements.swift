@@ -64,20 +64,6 @@ struct DDMAchievement: Identifiable {
         }
     }
 
-    static func coreGoal(_ id: String, _ title: String, _ n: Int) -> DDMAchievement {
-        DDMAchievement(id: id, title: title, detail: "Bank \(n) Core\(n == 1 ? "" : "s") in total.") { s in
-            let p = min(1.0, Double(s.save.lifetimeCores) / Double(n))
-            return (p, s.save.lifetimeCores >= n)
-        }
-    }
-
-    static func shiftGoal(_ id: String, _ title: String, _ n: Int) -> DDMAchievement {
-        DDMAchievement(id: id, title: title, detail: "Perform \(n) Tectonic Shift\(n == 1 ? "" : "s").") { s in
-            let p = min(1.0, Double(s.save.totalShifts) / Double(n))
-            return (p, s.save.totalShifts >= n)
-        }
-    }
-
     static func researchGoal(_ id: String, _ title: String, _ rp: Double) -> DDMAchievement {
         DDMAchievement(id: id, title: title, detail: "Earn \(DDMFormat.number(rp)) Research Points.") { s in
             let p = min(1.0, s.save.lifetimeResearch / rp)
@@ -139,11 +125,6 @@ struct DDMAchievement: Identifiable {
         treasureGoal("tr_100", "Treasure Magnate", 100),
 
         // --- new systems ---
-        coreGoal("core_1", "Tectonic", 1),
-        coreGoal("core_25", "Core Collector", 25),
-        coreGoal("core_200", "Deep Architect", 200),
-        shiftGoal("shift_1", "First Shift", 1),
-        shiftGoal("shift_10", "Continental Drift", 10),
         researchGoal("rp_1k", "Field Notes", 1_000),
         researchGoal("rp_1m", "Chief Scientist", 1_000_000),
         barGoal("bar_100k", "First Pour", 100_000),

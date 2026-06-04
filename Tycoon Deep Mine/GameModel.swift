@@ -427,14 +427,6 @@ struct DDMSave: Codable {
     var bossesDefeated: Int = 0         // lifetime bedrock bosses cleared
     var treasuresFound: Int = 0         // lifetime treasure/geode blocks cleared
 
-    // --- Cores (second prestige layer "Tectonic Shift") ---
-    var cores: Int = 0                  // spendable meta currency
-    var lifetimeCores: Int = 0          // total cores ever gained
-    var gemsClaimedForCores: Int = 0    // gems-basis already converted to cores
-    var collapsesClaimedForCores: Int = 0
-    var totalShifts: Int = 0            // number of Tectonic Shifts performed
-    var metaTree: [String: Int] = [:]   // meta-perk kind raw -> level (persists through collapse)
-
     // --- Research ---
     var research: Double = 0            // spendable research points
     var lifetimeResearch: Double = 0
@@ -472,13 +464,6 @@ struct DDMSave: Codable {
         claimedMilestones = try c.decodeIfPresent([Int].self, forKey: .claimedMilestones) ?? []
         bossesDefeated = try c.decodeIfPresent(Int.self, forKey: .bossesDefeated) ?? 0
         treasuresFound = try c.decodeIfPresent(Int.self, forKey: .treasuresFound) ?? 0
-        // additive — Cores
-        cores = try c.decodeIfPresent(Int.self, forKey: .cores) ?? 0
-        lifetimeCores = try c.decodeIfPresent(Int.self, forKey: .lifetimeCores) ?? 0
-        gemsClaimedForCores = try c.decodeIfPresent(Int.self, forKey: .gemsClaimedForCores) ?? 0
-        collapsesClaimedForCores = try c.decodeIfPresent(Int.self, forKey: .collapsesClaimedForCores) ?? 0
-        totalShifts = try c.decodeIfPresent(Int.self, forKey: .totalShifts) ?? 0
-        metaTree = try c.decodeIfPresent([String: Int].self, forKey: .metaTree) ?? [:]
         // additive — Research
         research = try c.decodeIfPresent(Double.self, forKey: .research) ?? 0
         lifetimeResearch = try c.decodeIfPresent(Double.self, forKey: .lifetimeResearch) ?? 0
