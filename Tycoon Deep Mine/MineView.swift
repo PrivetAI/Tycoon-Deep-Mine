@@ -29,11 +29,6 @@ struct MineView: View {
             statChip(icon: AnyView(DDMGemBadge(size: 20)),
                      value: "\(store.save.gems)",
                      label: "Gems")
-            if store.save.cores > 0 || store.save.lifetimeCores > 0 {
-                statChip(icon: AnyView(DDMCoreShape().fill(DDMPalette.accent).frame(width: 20, height: 20)),
-                         value: "\(store.save.cores)",
-                         label: "Cores")
-            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
