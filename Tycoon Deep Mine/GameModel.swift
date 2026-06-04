@@ -29,19 +29,19 @@ enum DDMOre: Int, CaseIterable, Codable {
         }
     }
 
-    // Base sell value per unit of ore. v15.1: compressed gradient 1.0..2.8 (tier 10 = 2.8× tier 1).
+    // Base sell value per unit of ore. v15.2: flat ~11%-per-tier ladder 1.0..2.0 (tier 10 = 2.0× tier 1).
     var baseValue: Double {
         switch self {
         case .coal:     return 1.0
-        case .copper:   return 1.2
-        case .tin:      return 1.4
-        case .iron:     return 1.6
-        case .silver:   return 1.8
-        case .gold:     return 2.0
-        case .ruby:     return 2.2
-        case .emerald:  return 2.4
-        case .sapphire: return 2.6
-        case .diamond:  return 2.8
+        case .copper:   return 1.111
+        case .tin:      return 1.222
+        case .iron:     return 1.333
+        case .silver:   return 1.444
+        case .gold:     return 1.555
+        case .ruby:     return 1.666
+        case .emerald:  return 1.777
+        case .sapphire: return 1.888
+        case .diamond:  return 2.0
         }
     }
 
@@ -222,32 +222,32 @@ struct DDMUpgradeDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // v15.1 ladder. Cost growth UNIFORM 1.20. Effects halved, costs ~tripled.
+    // v15.2 glacier ladder. Cost growth UNIFORM 1.25. Effects halved again, costs ~5–8x v15.1.
     static let all: [DDMUpgradeDef] = [
         DDMUpgradeDef(kind: .pickaxe, title: "Pickaxe Power",
-                      blurb: "+0.5 tap damage",
-                      baseCost: 30, costGrowth: 1.20, maxLevel: 9999),
+                      blurb: "+0.25 tap damage",
+                      baseCost: 200, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillCount, title: "Drill Rig",
                       blurb: "+1 drill",
-                      baseCost: 200, costGrowth: 1.20, maxLevel: 9999),
+                      baseCost: 1_500, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillSpeed, title: "Drill Tuning",
-                      blurb: "+0.05 base DPS per drill",
-                      baseCost: 1_500, costGrowth: 1.20, maxLevel: 9999),
+                      blurb: "+0.02 base DPS per drill",
+                      baseCost: 12_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .cart, title: "Mine Cart",
-                      blurb: "+0.2 ore/s, +3 cart capacity",
-                      baseCost: 600, costGrowth: 1.20, maxLevel: 9999),
+                      blurb: "+0.08 ore/s, +2 cart capacity",
+                      baseCost: 4_500, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .oreValue, title: "Ore Grader",
-                      blurb: "+2% bonus (capped at +200%)",
-                      baseCost: 2_000, costGrowth: 1.20, maxLevel: 9999),
+                      blurb: "+0.8% bonus (capped at +150%)",
+                      baseCost: 15_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .refiner, title: "Refiner",
-                      blurb: "+1% bonus (capped at +200%)",
-                      baseCost: 15_000, costGrowth: 1.20, maxLevel: 9999),
+                      blurb: "+0.4% bonus (capped at +150%)",
+                      baseCost: 100_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .autoTapper, title: "Auto Pick",
-                      blurb: "+0.05 auto-taps/sec",
-                      baseCost: 30_000, costGrowth: 1.20, maxLevel: 9999),
+                      blurb: "+0.02 auto-taps/sec",
+                      baseCost: 250_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .multiTap, title: "Multi-Strike",
-                      blurb: "+1 strike per tap (max 4 total)",
-                      baseCost: 2_000_000, costGrowth: 1.20, maxLevel: 3)
+                      blurb: "+1 strike per tap (max 3 total)",
+                      baseCost: 20_000_000, costGrowth: 1.25, maxLevel: 2)
     ]
 
     static func def(_ kind: DDMUpgradeKind) -> DDMUpgradeDef {
@@ -281,20 +281,20 @@ struct DDMGlobalDef: Identifiable {
 
     static let all: [DDMGlobalDef] = [
         DDMGlobalDef(kind: .startDepth, title: "Shaft Head Start",
-                     blurb: "+10 starting depth on each run per level.",
-                     baseCost: 60, maxLevel: 10),
+                     blurb: "+5 starting depth on each run per level.",
+                     baseCost: 150, maxLevel: 10),
         DDMGlobalDef(kind: .autoStart, title: "Standing Drill",
                      blurb: "+1 free drill at run start per level.",
-                     baseCost: 120, maxLevel: 10),
+                     baseCost: 300, maxLevel: 10),
         DDMGlobalDef(kind: .widePan, title: "Wide Pan",
                      blurb: "+1 cart level at run start per level.",
-                     baseCost: 200, maxLevel: 5),
+                     baseCost: 500, maxLevel: 5),
         DDMGlobalDef(kind: .offlineCap, title: "Night Shift",
                      blurb: "+2 h offline earnings cap per level.",
-                     baseCost: 100, maxLevel: 8),
+                     baseCost: 250, maxLevel: 8),
         DDMGlobalDef(kind: .startGold, title: "Seed Vault",
-                     blurb: "+200 starting gold on each run per level.",
-                     baseCost: 80, maxLevel: 10)
+                     blurb: "+100 starting gold on each run per level.",
+                     baseCost: 200, maxLevel: 10)
     ]
 
     static func def(_ kind: DDMGlobalKind) -> DDMGlobalDef {
@@ -436,13 +436,13 @@ enum DDMWorld {
         return (gold.rounded(), gems)
     }
 
-    // HP of a block at a given depth. v15.1: PURE LINEAR — `30 + 3*depth`, boss block × 5.
-    // depth=0 → 30, depth=80 → 270, depth=99 (boss) → 327×5=1635. Predictable forever.
+    // HP of a block at a given depth. v15.2: PURE LINEAR — `60 + 6*depth`, boss block × 8.
+    // depth=0 → 60, depth=80 → 540, depth=99 (boss) → 654×8=5232. Predictable forever.
     // Zone hpMult is 1.0 for all zones (cosmetic only) — depth alone drives difficulty.
     static func blockHP(depth: Int) -> Double {
         precondition(depth >= 0, "blockHP: depth must be non-negative, got \(depth)")
-        let base = 30.0 + 3.0 * Double(depth)
-        let mult = DDMZone.isBossDepth(depth) ? 5.0 : 1.0
+        let base = 60.0 + 6.0 * Double(depth)
+        let mult = DDMZone.isBossDepth(depth) ? 8.0 : 1.0
         let hp = base * mult
         return hp.isFinite ? max(1.0, hp) : 1.0
     }
@@ -457,9 +457,9 @@ enum DDMWorld {
         let unlocked = DDMOre.allCases.filter { $0.unlockDepth <= depth }
         let topIndex = (unlocked.last?.rawValue ?? 0)
 
-        // v15.1: 25% ore chance, FIXED 1 unit drop amount (no depth slope). Ore
-        // VALUE scales via the compressed tier gradient + bonusMultiplier.
-        let oreChance = 0.25
+        // v15.2: 15% ore chance, FIXED 1 unit drop amount (no depth slope). Ore
+        // VALUE scales via the flat tier gradient + bonusMultiplier.
+        let oreChance = 0.15
         var oreType: DDMOre? = nil
         var oreAmount: Double = 0
 
@@ -470,10 +470,10 @@ enum DDMWorld {
             oreAmount = 1.0
         }
 
-        // v15.1: rubble is purely LINEAR in depth — `0.5 + 0.5*depth`. Zone goldMult is 1.0
-        // so this is the canonical per-block gold income. d=0 → 0.5→1, d=80 → 40.5, d=99 → 50.
+        // v15.2: rubble is purely LINEAR in depth — `0.2 + 0.2*depth`. Zone goldMult is 1.0
+        // so this is the canonical per-block gold income. d=0 → 0.2→1, d=80 → 16.2, d=99 → 20.
         // Boss block gets ×3 rubble. No extra boss gold formula.
-        let rubble = (0.5 + 0.5 * Double(depth)).rounded()
+        let rubble = (0.2 + 0.2 * Double(depth)).rounded()
 
         // Boss gate. v15: rubble × 3 (inline — no separate add). Gems awarded at collapse only.
         if DDMZone.isBossDepth(depth) {

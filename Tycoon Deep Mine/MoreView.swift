@@ -66,7 +66,7 @@ struct MoreView: View {
                     .padding(.top, 4)
 
                     #if DEBUG
-                    Text(String(format: "bonusSum: %.2f / 2.00", store.bonusSum))
+                    Text(String(format: "bonusSum: %.2f / 1.50", store.bonusSum))
                         .font(.caption.monospacedDigit())
                         .foregroundColor(.secondary)
                     #endif

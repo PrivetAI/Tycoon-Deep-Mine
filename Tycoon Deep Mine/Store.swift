@@ -60,16 +60,16 @@ final class DDMStore: ObservableObject {
     // not exponential in product-of-multipliers. Gold AND damage share the same bucket.
 
     /// Spec §2 invariant 1: the ONLY multiplicative bucket on gold AND damage.
-    /// Hard-capped at +200% (raw value <= 2.0, final multiplier <= 3.0x).
+    /// Hard-capped at +150% (raw value <= 1.5, final multiplier <= 2.5x).
     var bonusSum: Double {
-        let oreGrader   = Double(upgradeLevel(.oreValue)) * 0.02   // Ore Grader: +2% per level
-        let refiner     = Double(upgradeLevel(.refiner))  * 0.01   // Refiner: +1% per level
-        let sharpTools  = Double(techLevel(.sharpTools))  * 0.005  // +0.5% / level
-        let veinMapping = Double(techLevel(.veinMapping)) * 0.005  // +0.5% / level
-        let gemBonus    = Double(max(0, save.gems)) * 0.002        // each gem: +0.2%
+        let oreGrader   = Double(upgradeLevel(.oreValue)) * 0.008  // Ore Grader: +0.8% per level
+        let refiner     = Double(upgradeLevel(.refiner))  * 0.004  // Refiner: +0.4% per level
+        let sharpTools  = Double(techLevel(.sharpTools))  * 0.002  // +0.2% / level
+        let veinMapping = Double(techLevel(.veinMapping)) * 0.002  // +0.2% / level
+        let gemBonus    = Double(max(0, save.gems)) * 0.0008       // each gem: +0.08%
         let raw = oreGrader + refiner + sharpTools + veinMapping + gemBonus
         precondition(raw >= 0, "bonusSum components must be non-negative")
-        return min(raw, 2.0)   // hard cap +200%
+        return min(raw, 1.5)   // hard cap +150%
     }
 
     /// Convenience: the final multiplier applied at every site.
@@ -88,10 +88,10 @@ final class DDMStore: ObservableObject {
         1 + upgradeLevel(.multiTap)
     }
 
-    // Per-strike tap (pickaxe) damage. v15.1: base 1 + 0.5/L. L0=1, L10=6, L20=11. Spec §5.
+    // Per-strike tap (pickaxe) damage. v15.2: base 1 + 0.25/L. L0=1, L10=3.5, L20=6. Spec §5.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 0.5
+        let base = 1.0 + Double(lvl) * 0.25
         let d = base * bonusMultiplier
         return d.isFinite ? max(1, d) : 1
     }
@@ -103,23 +103,23 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(1, d) : 1
     }
 
-    // Auto drill damage per second. v15.1: count = drillCount + autoStart*1 free drills.
-    // perDrill = 0.2 + drillSpeed*0.05. Total = count × perDrill × bonusMultiplier. Spec §5.
+    // Auto drill damage per second. v15.2: count = drillCount + autoStart*1 free drills.
+    // perDrill = 0.08 + drillSpeed*0.02. Total = count × perDrill × bonusMultiplier. Spec §5.
     // turboDrills tech contribution stubbed for Task 16.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
         let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 1.0
         if count <= 0 { return 0 }
-        let perDrill = 0.2 + Double(upgradeLevel(.drillSpeed)) * 0.05
+        let perDrill = 0.08 + Double(upgradeLevel(.drillSpeed)) * 0.02
         let dps = count * perDrill * bonusMultiplier
         return dps.isFinite ? max(0, dps) : 0
     }
 
     // Auto-tapper: mechanical arm that delivers tap-strength hits automatically.
-    // v15.1: +0.05 auto-taps/sec per level.
+    // v15.2: +0.02 auto-taps/sec per level.
     var autoTapRate: Double {
         let lvl = upgradeLevel(.autoTapper)
-        let r = Double(lvl) * 0.05
+        let r = Double(lvl) * 0.02
         return r.isFinite ? max(0, r) : 0
     }
 
@@ -159,21 +159,21 @@ final class DDMStore: ObservableObject {
     var hasSmelter: Bool { smelterLevel(.furnace) > 0 }
 
     // Ore units fed into the furnace per second. Spec §9.
-    // v15.1: base 0.3 + furnace*0.2 + smeltScience*0.1
+    // v15.2: base 0.15 + furnace*0.08 + smeltScience*0.04
     var smeltRate: Double {
         let lvl = smelterLevel(.furnace)
         if lvl <= 0 { return 0 }
-        let base    = 0.3
-        let furnace = Double(lvl) * 0.2
-        let science = Double(techLevel(.smeltScience)) * 0.1
+        let base    = 0.15
+        let furnace = Double(lvl) * 0.08
+        let science = Double(techLevel(.smeltScience)) * 0.04
         let r = base + furnace + science
         return r.isFinite ? max(0, r) : 0
     }
 
-    /// Spec §9: bar value = ore.baseValue * 1.5, multiplied by the SAME bonusSum
+    /// Spec §9: bar value = ore.baseValue * 1.2, multiplied by the SAME bonusSum
     /// every other gold source uses. No purity / batch / smelterCore chain.
     func barUnitValue(_ ore: DDMOre) -> Double {
-        let v = ore.baseValue * 1.5 * bonusMultiplier
+        let v = ore.baseValue * 1.2 * bonusMultiplier
         return v.isFinite ? max(0, v) : 0
     }
 
@@ -192,19 +192,19 @@ final class DDMStore: ObservableObject {
     }
 
     // Cart auto-collect & auto-sell rate (ore units / second processed). 0 = manual only.
-    // v15.1: (cartLevel + widePan) * 0.2. cartLogistics tech +0.05 ore/s / level.
+    // v15.2: (cartLevel + widePan) * 0.08. cartLogistics tech +0.02 ore/s / level.
     // Spec §5.
     var cartRate: Double {
         let lvl = upgradeLevel(.cart) + globalLevel(.widePan)
         if lvl <= 0 { return 0 }
-        let techBonus = Double(techLevel(.cartLogistics)) * 0.05  // +0.05 ore/s / level
-        let r = Double(lvl) * 0.2 + techBonus
+        let techBonus = Double(techLevel(.cartLogistics)) * 0.02  // +0.02 ore/s / level
+        let r = Double(lvl) * 0.08 + techBonus
         return r.isFinite ? r : 0
     }
 
-    // Cart capacity: 15 base + 3 per cart/widePan level. Spec §5.
+    // Cart capacity: 10 base + 2 per cart/widePan level. Spec §5.
     var cartCapacity: Int {
-        return 15 + 3 * (upgradeLevel(.cart) + globalLevel(.widePan))
+        return 10 + 2 * (upgradeLevel(.cart) + globalLevel(.widePan))
     }
 
     var hasAutoSell: Bool { cartRate > 0 }
@@ -364,11 +364,11 @@ final class DDMStore: ObservableObject {
     }
 
     // Spec §8: RP accrues as a slow linear trickle based on current depth.
-    // v15.1: rate halved to depth/200 (was depth/50).
+    // v15.2: rate further reduced to depth/500.
     // Called from autoStep every timer tick.
     private func accrueResearch(delta: Double) {
         guard delta > 0 else { return }
-        let rpPerSecond = Double(save.depth) / 200.0
+        let rpPerSecond = Double(save.depth) / 500.0
         let gained = rpPerSecond * delta
         guard gained > 0 else { return }
         var r = save.research + gained
@@ -554,29 +554,29 @@ final class DDMStore: ObservableObject {
     // MARK: - Prestige (Collapse)
 
     /// Spec §7: sub-linear so long runs cannot farm explosively.
-    /// v15.1 exponent 0.55 (flatter). d=100 → 1, d=1000 → 3, d=5000 → 8.
+    /// v15.2 exponent 0.40 (very flat). d=100 → 1, d=1000 → 2, d=5000 → 4.
     var pendingGems: Int {
         let m = max(0, save.runMaxDepth)
         guard m >= 100 else { return 0 }
-        let raw = pow(Double(m) / 100.0, 0.55)
+        let raw = pow(Double(m) / 100.0, 0.4)
         return Int(floor(raw))
     }
 
     var canCollapse: Bool { pendingGems >= 1 }
 
     // The starting depth for a fresh run, including Shaft Head Start (gems). Clamped to keep it finite.
-    // v15.1: +10 per level (was +20).
+    // v15.2: +5 per level.
     var runStartDepth: Int {
-        let d = globalLevel(.startDepth) * 10
+        let d = globalLevel(.startDepth) * 5
         return max(0, min(50_000, d))
     }
 
     // Apply run-start bonuses (Seed Vault global perk).
     private func applyRunHeadStart() {
-        // Seed Vault: +200 starting gold per level (v15.1). Spec §7.
+        // Seed Vault: +100 starting gold per level (v15.2). Spec §7.
         let seedLevels = globalLevel(.startGold)
         if seedLevels > 0 {
-            let stake = 200.0 * Double(seedLevels)
+            let stake = 100.0 * Double(seedLevels)
             addGold(stake)
         }
     }
