@@ -431,19 +431,15 @@ enum DDMWorld {
         return (gold.rounded(), gems)
     }
 
-    // HP of a block at a given depth. v14: PURE LINEAR — `50 + d * 10`, no exponential.
-    // The exponential coefficient (1.020^d) doubled HP every 35 m and created an
-    // impassable wall in late game and a flat early game. Linear means each depth costs
-    // 10 more HP than the previous, predictable forever. Zone hpMult adds a soft step.
+    // HP of a block at a given depth. v15: PURE LINEAR — `20 + 2*depth`, boss block × 4.
+    // depth=0 → 20, depth=80 → 180, depth=99 (boss) → 218×4=872. Predictable forever.
+    // Zone hpMult is 1.0 for all zones (cosmetic only) — depth alone drives difficulty.
     static func blockHP(depth: Int) -> Double {
-        let d = Double(max(0, depth))
-        let zone = DDMZone.zone(at: depth)
-        let base = 50.0 + d * 10.0
-        var hp = base * zone.hpMult
-        if DDMZone.isBossDepth(depth) {
-            hp *= 5.0  // boss is 5× harder
-        }
-        return hp.isFinite ? max(50.0, hp) : 50.0
+        precondition(depth >= 0, "blockHP: depth must be non-negative, got \(depth)")
+        let base = 20.0 + 2.0 * Double(depth)
+        let mult = DDMZone.isBossDepth(depth) ? 4.0 : 1.0
+        let hp = base * mult
+        return hp.isFinite ? max(1.0, hp) : 1.0
     }
 
     // Generate a block deterministically from depth.
@@ -469,37 +465,35 @@ enum DDMWorld {
             oreAmount = 1.0
         }
 
-        // v14: rubble is purely LINEAR in depth — `1 + d * 2`. Zone goldMult is now 1.0
-        // so this is the canonical per-block gold income. d=10 → 21, d=100 → 201,
-        // d=1000 → 2001. Sustainable forever.
-        let rubble = (1.0 + Double(depth) * 2.0).rounded()
+        // v15: rubble is purely LINEAR in depth — `1 + depth`. Zone goldMult is 1.0
+        // so this is the canonical per-block gold income. d=0 → 1, d=80 → 81, d=99 → 100.
+        // Boss block gets ×3 rubble (so total = (1+depth)*3). No extra boss gold formula.
+        let rubble = (1.0 + Double(depth)).rounded()
 
-        // Boss gate. v14: rubble × 3 + d × 10 — linear, predictable jackpot. Gem reward
-        // is a small constant flow toward prestige.
+        // Boss gate. v15: rubble × 3 (inline — no separate add). Gems awarded at collapse only.
         if DDMZone.isBossDepth(depth) {
-            let bossGold = (rubble * 3.0 + Double(depth) * 10.0).rounded()
-            let bossGems = max(1, depth / 500)
+            let bossGold = (rubble * 3.0).rounded()
             let richOre = unlocked.last ?? .coal
             let bossOreAmt = Double(rng.nextInt(5, 10))
             return DDMBlock(depth: depth, maxHP: hp, hp: hp,
                             oreType: oreType, oreAmount: oreAmount,
                             rubbleGold: max(1, rubble), kind: .boss,
-                            bonusGold: bossGold, gemReward: bossGems,
+                            bonusGold: bossGold, gemReward: 0,
                             bonusOre: richOre, bonusOreAmount: bossOreAmt)
         }
 
         // Treasure / geode? deterministic, seeded from depth.
         let treasureRoll = rng.nextDouble()
         if depth > 5 && treasureRoll < 0.035 {
-            // v14: treasure is rubble × 2 + d × 3 — gentle one-time bonus.
+            // v15: treasure is rubble × 2 + d × 3 — gentle gold bonus only. NO gem award
+            // (gems are awarded at collapse only — spec §6).
             let tGold = (rubble * 2.0 + Double(depth) * 3.0).rounded()
-            let tGem = rng.chance(0.10) ? 1 : 0
             let richOre = unlocked.last ?? .coal
             let tOreAmt = Double(rng.nextInt(3, 6))
             return DDMBlock(depth: depth, maxHP: hp, hp: hp,
                             oreType: oreType, oreAmount: oreAmount,
                             rubbleGold: max(1, rubble), kind: .treasure,
-                            bonusGold: tGold, gemReward: tGem,
+                            bonusGold: tGold, gemReward: 0,
                             bonusOre: richOre, bonusOreAmount: tOreAmt)
         }
 
