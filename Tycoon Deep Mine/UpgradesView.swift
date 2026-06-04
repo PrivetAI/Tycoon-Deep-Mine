@@ -162,16 +162,13 @@ struct UpgradeRow: View {
         switch def.kind {
         case .pickaxe:
             DDMPickaxeShape(color: DDMPalette.accentDeep, handle: DDMPalette.dirt, size: 30)
-        case .drillCount, .drillSpeed, .drillEfficiency:
+        case .drillCount, .drillSpeed:
             DDMTabUpgradeIcon(color: DDMPalette.gemDeep, size: 26)
-        case .oreValue, .refiner, .goldFind:
+        case .oreValue, .refiner:
             DDMCoinShape(size: 28)
         case .cart:
             DDMOreChunk(color: DDMPalette.amberDeep, size: 26)
-        case .elevator:
-            DDMChevron(color: DDMPalette.accentDeep, size: 26)
-                .rotationEffect(.degrees(90))
-        case .dynamite, .multiTap, .depthScaling:
+        case .multiTap:
             DDMBurstShape()
                 .fill(DDMPalette.danger)
                 .frame(width: 26, height: 26)
@@ -192,22 +189,12 @@ struct UpgradeRow: View {
             return "Sell value x\(String(format: "%.2f", store.oreValueMultiplier))"
         case .cart:
             return level > 0 ? "Auto-sell: \(DDMFormat.number(store.cartRate))/s" : "Manual selling only"
-        case .elevator:
-            return "Depth/clear: +\(store.elevatorBonus) m"
         case .refiner:
             return "Refining bonus active"
-        case .dynamite:
-            return level > 0 ? "Burst dmg: +\(DDMFormat.number(store.burstBonusDamage))" : "No burst charge yet"
         case .multiTap:
             return "Strikes per tap: \(store.tapStrikes)"
         case .autoTapper:
             return store.autoTapRate > 0 ? "Auto taps: \(String(format: "%.1f", store.autoTapRate))/s" : "No auto-tapper yet"
-        case .depthScaling:
-            return level > 0 ? "Depth damage x\(String(format: "%.2f", store.depthDamageMultiplier))" : "Scales damage with depth"
-        case .goldFind:
-            return "Gold find x\(String(format: "%.2f", store.goldFindMultiplier))"
-        case .drillEfficiency:
-            return "Auto dmg/s: \(DDMFormat.number(store.autoDPS))"
         }
     }
 }

@@ -64,21 +64,14 @@ final class DDMStore: ObservableObject {
     var goldBonusSum: Double {
         Double(upgradeLevel(.oreValue))     * 0.10 +   // Ore Grader: +10% per level
         Double(upgradeLevel(.refiner))      * 0.05 +   // Refiner: +5% per level
-        Double(upgradeLevel(.goldFind))     * 0.03 +   // Prospect Sense: +3% per level
-        Double(globalLevel(.yieldBoost))    * 0.10 +   // Deep Veins (global): +10%
         Double(techLevel(.assayers))        * 0.03 +   // Assayers (tech): +3%
         Double(max(0, save.gems))           * 0.01     // each gem: +1%
     }
 
     /// Sum of all damage-side per-level bonuses (applied as (1 + damageBonusSum) on tap & auto).
-    /// Depth-scaling contributes proportionally to current depth (capped at 50 depth-bands).
     var damageBonusSum: Double {
-        let depthBands = min(50.0, Double(max(0, save.depth)) / 100.0)
-        let depthContrib = Double(upgradeLevel(.depthScaling)) * 0.005 * depthBands
-        return Double(globalLevel(.yieldBoost))    * 0.05 +   // half of gold (yield boost double-counts)
-               Double(techLevel(.sharpTools))      * 0.03 +
-               Double(max(0, save.gems))           * 0.01 +
-               depthContrib
+        Double(techLevel(.sharpTools))      * 0.03 +
+        Double(max(0, save.gems))           * 0.01
     }
 
     // --- Compatibility shims for existing call sites ---
@@ -110,17 +103,8 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(1, d) : 1
     }
 
-    // Bonus tap damage vs boss/bedrock blocks (dynamite charge). v14: +5 dmg per level.
-    var burstBonusDamage: Double {
-        let lvl = upgradeLevel(.dynamite)
-        if lvl <= 0 { return 0 }
-        let base = Double(lvl) * 5.0
-        let d = base * (1.0 + damageBonusSum)
-        return d.isFinite ? max(0, d) : 0
-    }
-
-    // Auto drill damage per second. v14: each drill outputs (0.5 + speed*0.10 +
-    // gearing*0.05 + turbo*0.05) DPS — additive contributions. Total = drillCount ×
+    // Auto drill damage per second. v15: each drill outputs (0.5 + speed*0.10 +
+    // turbo*0.05) DPS — additive contributions. Total = drillCount ×
     // perDrill × (1 + damageBonusSum). One product, two factors, no chains.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
@@ -128,7 +112,6 @@ final class DDMStore: ObservableObject {
         if count <= 0 { return 0 }
         let perDrill = 0.5 +
             Double(upgradeLevel(.drillSpeed))      * 0.10 +
-            Double(upgradeLevel(.drillEfficiency)) * 0.05 +
             Double(techLevel(.turboDrills))        * 0.05
         let dps = count * perDrill * (1.0 + damageBonusSum)
         return dps.isFinite ? max(0, dps) : 0
@@ -147,18 +130,6 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(0, d) : 0
     }
 
-    // The four properties below used to be the multiplicative chains. They now report
-    // the same value the system "would" multiply by (= 1 + relevant slice of goldBonusSum)
-    // so any HUD code that reads them still shows a coherent number. Internal callers
-    // award gold using `(1.0 + goldBonusSum)` directly.
-
-    var depthDamageMultiplier: Double {
-        let depthBands = min(200.0, Double(max(0, save.depth)) / 100.0)
-        return 1.0 + Double(upgradeLevel(.depthScaling)) * 0.005 * depthBands
-    }
-    var goldFindMultiplier: Double {
-        1.0 + Double(upgradeLevel(.goldFind)) * 0.03
-    }
     var oreValueMultiplier: Double { 1.0 + goldBonusSum }
     // Per-unit ore value. Single (1 + goldBonusSum) multiplier.
     func oreUnitValue(_ ore: DDMOre) -> Double {
@@ -182,12 +153,6 @@ final class DDMStore: ObservableObject {
     var researchGoldMultiplier: Double {
         let assay = 1.0 + Double(techLevel(.assayers)) * 0.06
         return assay.isFinite ? max(1.0, assay) : 1.0
-    }
-
-    // Research point earn-rate multiplier (globals + Field Lab).
-    var researchRateMultiplier: Double {
-        let lab = 1.0 + Double(globalLevel(.researchRate)) * 0.20
-        return lab.isFinite ? max(1.0, lab) : 1.0
     }
 
     // Upgrade-cost discount from Lean Engineering (diminishing, capped ~ -36%).
@@ -214,7 +179,7 @@ final class DDMStore: ObservableObject {
         let lvl = smelterLevel(.rate)
         if lvl <= 0 { return 0 }
         let base = Double(lvl) * 1.5
-        let speed = 1.0 + Double(globalLevel(.smeltSpeed)) * 0.15 + Double(techLevel(.smelting)) * 0.20
+        let speed = 1.0 + Double(techLevel(.smelting)) * 0.20
         let r = base * speed
         return r.isFinite ? max(0, r) : 0
     }
@@ -249,18 +214,6 @@ final class DDMStore: ObservableObject {
         return v
     }
 
-    // Ore drop amount multiplier (ore magnet global + Vein Mapping tech).
-    var oreAmountMultiplier: Double {
-        let m = 1.0 + Double(globalLevel(.oreMagnet)) * 0.20 + Double(techLevel(.oreRichness)) * 0.10
-        return m.isFinite ? max(1.0, m) : 1.0
-    }
-
-    // Treasure / geode find chance multiplier (prospector's eye + Deep Scan). Extra finds
-    // on top of the deterministic base geodes.
-    var treasureLuckBonus: Double {
-        Double(globalLevel(.treasureLuck)) * 0.25 + Double(techLevel(.deepScan)) * 0.12
-    }
-
     // Cart auto-collect & auto-sell rate (ore units / second processed). 0 = manual only.
     // v13: halved from (L*1.5 + 1.0) to (L*0.5 + 0.5). Cart L2 was draining a 23K stash
     // at ~4 ore/sec = ~50 g/sec passively into the gold counter while the HUD said
@@ -274,21 +227,6 @@ final class DDMStore: ObservableObject {
     }
 
     var hasAutoSell: Bool { upgradeLevel(.cart) > 0 }
-
-    // Elevator depth bonus per block clear.
-    var elevatorBonus: Int {
-        return upgradeLevel(.elevator) // extra meters skipped per clear
-    }
-
-    // Critical tap chance.
-    var critChance: Double {
-        min(0.75, Double(globalLevel(.tapCrit)) * 0.03)
-    }
-
-    // Critical tap multiplier (base 5x, +1x per Detonator level).
-    var critMultiplier: Double {
-        5.0 + Double(globalLevel(.critPower)) * 1.0
-    }
 
     var offlineCapSeconds: Double {
         let baseHours = 2.0 + Double(globalLevel(.offlineCap)) * 2.0
@@ -341,27 +279,13 @@ final class DDMStore: ObservableObject {
     func tapDig() {
         save.totalTaps += 1
         let strikes = tapStrikes
-        var perStrike = tapDamage
-        // Dynamite burst lands extra hard on bedrock bosses (and helps everywhere).
-        if currentBlock.isBoss {
-            perStrike += burstBonusDamage * 3.0
-        } else {
-            perStrike += burstBonusDamage
-        }
-        var crit = false
-        if critChance > 0 {
-            var rng = DDMRandom(seed: ddmSeed(save.totalTaps, save.depth &+ 7))
-            if rng.chance(critChance) {
-                perStrike *= critMultiplier
-                crit = true
-            }
-        }
+        let perStrike = tapDamage
         // Show the combined hit, but apply each strike individually so a multi-strike tap
         // can roll over into the next block cleanly.
         let total = perStrike * Double(max(1, strikes))
-        addFloatingHit(amount: total, crit: crit)
+        addFloatingHit(amount: total)
         for _ in 0..<max(1, strikes) {
-            applyDamage(perStrike, manual: false, crit: crit)
+            applyDamage(perStrike, manual: false)
         }
         if settings.hapticsOn {
             DDMHaptics.tap()
@@ -370,12 +294,12 @@ final class DDMStore: ObservableObject {
         throttledSaveTick(force: false)
     }
 
-    private func addFloatingHit(amount: Double, crit: Bool) {
+    private func addFloatingHit(amount: Double) {
         // Damage numbers — prefixed with "-" so they unambiguously read as HP subtracted,
         // not gold added. Combined with the white/red colors in MineView, this rules out
         // the perceptual "tap = gold" coupling that drove 18 rounds of misread feedback.
-        let text = crit ? "CRIT -\(DDMFormat.number(amount))" : "-\(DDMFormat.number(amount))"
-        let hit = DDMFloatingHit(id: UUID(), text: text, crit: crit)
+        let text = "-\(DDMFormat.number(amount))"
+        let hit = DDMFloatingHit(id: UUID(), text: text, crit: false)
         floatingHits.append(hit)
         if floatingHits.count > 6 { floatingHits.removeFirst(floatingHits.count - 6) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
@@ -383,7 +307,7 @@ final class DDMStore: ObservableObject {
         }
     }
 
-    private func applyDamage(_ amount: Double, manual: Bool, crit: Bool) {
+    private func applyDamage(_ amount: Double, manual: Bool) {
         guard amount > 0 else { return }
         var block = currentBlock
         block.hp -= amount
@@ -398,8 +322,7 @@ final class DDMStore: ObservableObject {
     private func clearBlock(_ block: DDMBlock) {
         awardBlockContents(block)
         // Advance depth, but never leap over a boss-gate depth.
-        let advance = 1 + elevatorBonus
-        save.depth = nextDepth(from: save.depth, desiredAdvance: advance)
+        save.depth = nextDepth(from: save.depth, desiredAdvance: 1)
         if save.depth > save.runMaxDepth { save.runMaxDepth = save.depth }
         if save.depth > save.maxDepth { save.maxDepth = save.depth }
         checkMilestones()
@@ -422,30 +345,19 @@ final class DDMStore: ObservableObject {
     }
 
     private func mineOre(_ ore: DDMOre, amount: Double) {
-        let amt = amount * oreAmountMultiplier
         let cur = save.oreCounts[ore.rawValue] ?? 0
-        save.oreCounts[ore.rawValue] = cur + amt
+        save.oreCounts[ore.rawValue] = cur + amount
         let mined = save.oreMinedTotals[ore.rawValue] ?? 0
-        save.oreMinedTotals[ore.rawValue] = mined + amt
+        save.oreMinedTotals[ore.rawValue] = mined + amount
     }
 
-    // Award a treasure/boss block's bonus contents. Treasure gem finds can be boosted
-    // by Prospector's Eye (extra deterministic rolls).
+    // Award a treasure/boss block's bonus contents.
     private func awardBonus(_ block: DDMBlock) {
         guard block.kind != .normal else { return }
         if block.bonusGold > 0 {
             addGold(block.bonusGold * (1.0 + goldBonusSum))
         }
-        var gems = block.gemReward
-        if block.isTreasure && treasureLuckBonus > 0 {
-            // each 1.0 of luck bonus gives one extra chance at a bonus gem
-            var rng = DDMRandom(seed: ddmSeed(block.depth, 0x6E37))
-            var luck = treasureLuckBonus
-            while luck > 0 {
-                if rng.chance(min(1.0, luck)) { gems += 1 }
-                luck -= 1.0
-            }
-        }
+        let gems = block.gemReward
         if gems > 0 {
             save.gems += gems
         }
@@ -479,7 +391,7 @@ final class DDMStore: ObservableObject {
         // RP for total depth = depth^1.25 * 0.5 ; pay only the delta since last basis.
         let total = pow(Double(basis), 1.25) * 0.5
         let prior = pow(Double(max(0, save.researchClaimedDepth)), 1.25) * 0.5
-        var gained = (total - prior) * researchRateMultiplier
+        var gained = (total - prior)
         if !gained.isFinite || gained < 0 { gained = 0 }
         if gained > 0 {
             var r = save.research + gained
@@ -769,8 +681,7 @@ final class DDMStore: ObservableObject {
                     remaining -= block.hp
                     // clear silently (no floating hit)
                     awardBlockContents(block)
-                    let advance = 1 + elevatorBonus
-                    save.depth = nextDepth(from: save.depth, desiredAdvance: advance)
+                    save.depth = nextDepth(from: save.depth, desiredAdvance: 1)
                     if save.depth > save.runMaxDepth { save.runMaxDepth = save.depth }
                     if save.depth > save.maxDepth { save.maxDepth = save.depth }
                     checkMilestones()
@@ -921,7 +832,7 @@ final class DDMStore: ObservableObject {
             }
             timeLeft -= timeToClear
             awardBlockContents(currentBlock)
-            save.depth = nextDepth(from: save.depth, desiredAdvance: 1 + elevatorBonus)
+            save.depth = nextDepth(from: save.depth, desiredAdvance: 1)
             if save.depth > save.runMaxDepth { save.runMaxDepth = save.depth }
             if save.depth > save.maxDepth { save.maxDepth = save.depth }
             checkMilestones()

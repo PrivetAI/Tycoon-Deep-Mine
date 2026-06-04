@@ -50,7 +50,7 @@ struct ResearchView: View {
                 divider
                 infoCol("Lifetime RP", DDMFormat.number(store.save.lifetimeResearch))
                 divider
-                infoCol("RP Rate", String(format: "x%.2f", store.researchRateMultiplier))
+                infoCol("RP Rate", "x1.00")
             }
             .padding(.top, 4)
         }

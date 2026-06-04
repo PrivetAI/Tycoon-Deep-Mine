@@ -235,15 +235,9 @@ enum DDMUpgradeKind: String, Codable, CaseIterable {
     case drillSpeed     // multiplier on auto dps
     case oreValue       // ore sell value multiplier
     case cart           // auto-collect / auto-sell rate
-    case elevator       // depth skip per block clear bonus
     case refiner        // bonus gold per sale (refining)
-    case dynamite       // burst / boss tap damage
-    // --- new lines ---
     case multiTap       // each tap counts as N strikes
     case autoTapper     // automatic taps per second (uses tap damage)
-    case depthScaling   // tap & auto damage scale with current depth
-    case goldFind       // % bonus gold from rubble & sales
-    case drillEfficiency// multiplier on auto dps
 }
 
 struct DDMUpgradeDef: Identifiable {
@@ -261,10 +255,7 @@ struct DDMUpgradeDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // v14 ladder. Cost growth UNIFORM 1.15 — Cookie Clicker territory. Effect rates
-    // match Store.swift v14. Bases are tuned so that meaningful purchases happen across
-    // the whole run: pickaxe starts cheap, drill enters at ~2 min of fresh play, the
-    // bigger systems (depthScaling, autoTapper, multiTap) are mid-to-late investments.
+    // v15 ladder. Cost growth UNIFORM 1.15 — Cookie Clicker territory.
     static let all: [DDMUpgradeDef] = [
         DDMUpgradeDef(kind: .pickaxe, title: "Pickaxe Power",
                       blurb: "+0.5 tap damage per level.",
@@ -278,33 +269,18 @@ struct DDMUpgradeDef: Identifiable {
         DDMUpgradeDef(kind: .drillSpeed, title: "Drill Tuning",
                       blurb: "+0.10 DPS per drill per level.",
                       baseCost: 500, costGrowth: 1.15, maxLevel: 9999),
-        DDMUpgradeDef(kind: .dynamite, title: "Dynamite Charge",
-                      blurb: "+5 burst damage vs bedrock & bosses per level.",
-                      baseCost: 1_000, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .oreValue, title: "Ore Grader",
                       blurb: "+10% ore sell value per level.",
                       baseCost: 200, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .refiner, title: "Refiner",
                       blurb: "+5% sale gold per level.",
                       baseCost: 800, costGrowth: 1.15, maxLevel: 9999),
-        DDMUpgradeDef(kind: .elevator, title: "Elevator",
-                      blurb: "Eases descent — +1 depth per block clear per level.",
-                      baseCost: 10_000, costGrowth: 1.15, maxLevel: 200),
-        DDMUpgradeDef(kind: .drillEfficiency, title: "Drill Gearing",
-                      blurb: "+0.05 DPS per drill per level.",
-                      baseCost: 2_000, costGrowth: 1.15, maxLevel: 9999),
-        DDMUpgradeDef(kind: .goldFind, title: "Prospect Sense",
-                      blurb: "+3% gold from rubble & sales per level.",
-                      baseCost: 2_500, costGrowth: 1.15, maxLevel: 9999),
         DDMUpgradeDef(kind: .multiTap, title: "Multi-Strike",
                       blurb: "Each tap lands +1 extra strike per level.",
                       baseCost: 20_000, costGrowth: 1.15, maxLevel: 10),
         DDMUpgradeDef(kind: .autoTapper, title: "Auto Pick",
                       blurb: "A mechanical arm auto-taps for you (+0.2/sec per level).",
-                      baseCost: 50_000, costGrowth: 1.15, maxLevel: 200),
-        DDMUpgradeDef(kind: .depthScaling, title: "Pressure Drill",
-                      blurb: "All damage rises +0.5% per 100 m of depth per level.",
-                      baseCost: 100_000, costGrowth: 1.15, maxLevel: 300)
+                      baseCost: 50_000, costGrowth: 1.15, maxLevel: 200)
     ]
 
     static func def(_ kind: DDMUpgradeKind) -> DDMUpgradeDef {
@@ -315,18 +291,11 @@ struct DDMUpgradeDef: Identifiable {
 // MARK: - Global (prestige) upgrades — bought with Gems
 
 enum DDMGlobalKind: String, Codable, CaseIterable {
-    case yieldBoost      // % global yield per level
     case startDepth      // start depth after collapse
     case offlineCap      // raise offline earnings cap (hours)
-    case tapCrit         // chance for critical taps
     case autoStart       // free starting drills after collapse
-    case critPower       // critical hit multiplier
-    case treasureLuck    // treasure / geode chance
-    case oreMagnet       // ore drop amount multiplier
-    // --- new globals ---
     case startGold       // start each collapse with a gold stake
-    case researchRate    // % more research points
-    case smeltSpeed      // % faster smelting
+    case widePan         // +1 cart level at run start
 }
 
 struct DDMGlobalDef: Identifiable {
@@ -346,40 +315,21 @@ struct DDMGlobalDef: Identifiable {
     }
 
     static let all: [DDMGlobalDef] = [
-        DDMGlobalDef(kind: .yieldBoost, title: "Deep Veins",
-                     blurb: "+12% global gold & ore yield per level.",
-                     baseCost: 3, costGrowth: 1.55, maxLevel: 300),
         DDMGlobalDef(kind: .startDepth, title: "Shaft Head Start",
                      blurb: "Begin each collapse 15 m deeper per level.",
                      baseCost: 4, costGrowth: 1.6, maxLevel: 200),
         DDMGlobalDef(kind: .offlineCap, title: "Night Shift",
                      blurb: "+2 h offline earnings cap per level.",
                      baseCost: 4, costGrowth: 1.6, maxLevel: 60),
-        DDMGlobalDef(kind: .tapCrit, title: "Lucky Strikes",
-                     blurb: "+3% chance a tap lands a critical.",
-                     baseCost: 6, costGrowth: 1.65, maxLevel: 25),
         DDMGlobalDef(kind: .autoStart, title: "Standing Rig",
                      blurb: "Keep 2 extra drills after collapse per level.",
                      baseCost: 5, costGrowth: 1.6, maxLevel: 60),
-        DDMGlobalDef(kind: .critPower, title: "Detonator",
-                     blurb: "+1.0x critical-hit damage per level.",
-                     baseCost: 7, costGrowth: 1.65, maxLevel: 40),
-        DDMGlobalDef(kind: .treasureLuck, title: "Prospector's Eye",
-                     blurb: "+25% treasure & geode find chance per level.",
-                     baseCost: 6, costGrowth: 1.6, maxLevel: 40),
-        DDMGlobalDef(kind: .oreMagnet, title: "Ore Magnet",
-                     blurb: "+20% ore mined per block per level.",
-                     baseCost: 5, costGrowth: 1.55, maxLevel: 60),
-        // --- new globals ---
         DDMGlobalDef(kind: .startGold, title: "Seed Vault",
                      blurb: "Begin each collapse with a larger gold stake.",
                      baseCost: 6, costGrowth: 1.6, maxLevel: 50),
-        DDMGlobalDef(kind: .researchRate, title: "Field Lab",
-                     blurb: "+20% Research Points earned per level.",
-                     baseCost: 8, costGrowth: 1.62, maxLevel: 40),
-        DDMGlobalDef(kind: .smeltSpeed, title: "Forge Draft",
-                     blurb: "+15% smelting speed per level.",
-                     baseCost: 8, costGrowth: 1.6, maxLevel: 40)
+        DDMGlobalDef(kind: .widePan, title: "Wide Pan",
+                     blurb: "+1 cart level at the start of each run.",
+                     baseCost: 5, costGrowth: 1.6, maxLevel: 10)
     ]
 
     static func def(_ kind: DDMGlobalKind) -> DDMGlobalDef {
@@ -524,7 +474,7 @@ enum DDMWorld {
         let base = 50.0 + d * 10.0
         var hp = base * zone.hpMult
         if DDMZone.isBossDepth(depth) {
-            hp *= 5.0  // boss is 5× — beatable with dynamite burst
+            hp *= 5.0  // boss is 5× harder
         }
         return hp.isFinite ? max(50.0, hp) : 50.0
     }
