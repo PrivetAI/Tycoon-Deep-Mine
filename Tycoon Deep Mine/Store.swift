@@ -102,12 +102,12 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(1, d) : 1
     }
 
-    // Auto drill damage per second. v15: count = drillCount + autoStart*2 free drills.
+    // Auto drill damage per second. v15: count = drillCount + autoStart*1 free drills.
     // perDrill = 0.5 + drillSpeed*0.2. Total = count × perDrill × bonusMultiplier. Spec §5.
     // turboDrills tech contribution stubbed for Task 16.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
-        let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 2.0
+        let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 1.0
         if count <= 0 { return 0 }
         let perDrill = 0.5 + Double(upgradeLevel(.drillSpeed)) * 0.2
         let dps = count * perDrill * bonusMultiplier
@@ -593,17 +593,17 @@ final class DDMStore: ObservableObject {
 
     // The starting depth for a fresh run, including Shaft Head Start (gems). Clamped to keep it finite.
     var runStartDepth: Int {
-        let d = globalLevel(.startDepth) * 15
+        let d = globalLevel(.startDepth) * 20
         return max(0, min(50_000, d))
     }
 
     // Apply run-start bonuses (Seed Vault global perk).
     private func applyRunHeadStart() {
-        // Seed Vault: start with a gold stake (scales modestly with level).
+        // Seed Vault: +500 starting gold per level. Spec §7.
         let seedLevels = globalLevel(.startGold)
         if seedLevels > 0 {
-            let stake = 100.0 * pow(3.0, Double(seedLevels))
-            if stake.isFinite { addGold(min(stake, 1e12)) }
+            let stake = 500.0 * Double(seedLevels)
+            addGold(stake)
         }
     }
 

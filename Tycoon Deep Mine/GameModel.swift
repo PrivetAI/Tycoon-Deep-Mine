@@ -270,33 +270,31 @@ struct DDMGlobalDef: Identifiable {
     let title: String
     let blurb: String
     let baseCost: Int
-    let costGrowth: Double
     let maxLevel: Int
 
     var id: String { kind.rawValue }
 
+    /// Spec §7: linear cost ladder. cost(level) = baseCost * (level + 1)
     func cost(at level: Int) -> Int {
-        let c = Double(baseCost) * pow(costGrowth, Double(level))
-        if !c.isFinite { return Int.max }
-        return Int(c.rounded())
+        return baseCost * (level + 1)
     }
 
     static let all: [DDMGlobalDef] = [
         DDMGlobalDef(kind: .startDepth, title: "Shaft Head Start",
-                     blurb: "Begin each collapse 15 m deeper per level.",
-                     baseCost: 4, costGrowth: 1.6, maxLevel: 200),
+                     blurb: "+20 starting depth on each run per level.",
+                     baseCost: 30, maxLevel: 10),
+        DDMGlobalDef(kind: .autoStart, title: "Standing Drill",
+                     blurb: "+1 free drill at run start per level.",
+                     baseCost: 60, maxLevel: 10),
+        DDMGlobalDef(kind: .widePan, title: "Wide Pan",
+                     blurb: "+1 cart level at run start per level.",
+                     baseCost: 100, maxLevel: 5),
         DDMGlobalDef(kind: .offlineCap, title: "Night Shift",
                      blurb: "+2 h offline earnings cap per level.",
-                     baseCost: 4, costGrowth: 1.6, maxLevel: 60),
-        DDMGlobalDef(kind: .autoStart, title: "Standing Rig",
-                     blurb: "Keep 2 extra drills after collapse per level.",
-                     baseCost: 5, costGrowth: 1.6, maxLevel: 60),
+                     baseCost: 50, maxLevel: 8),
         DDMGlobalDef(kind: .startGold, title: "Seed Vault",
-                     blurb: "Begin each collapse with a larger gold stake.",
-                     baseCost: 6, costGrowth: 1.6, maxLevel: 50),
-        DDMGlobalDef(kind: .widePan, title: "Wide Pan",
-                     blurb: "+1 cart level at the start of each run.",
-                     baseCost: 5, costGrowth: 1.6, maxLevel: 10)
+                     blurb: "+500 starting gold on each run per level.",
+                     baseCost: 40, maxLevel: 10)
     ]
 
     static func def(_ kind: DDMGlobalKind) -> DDMGlobalDef {

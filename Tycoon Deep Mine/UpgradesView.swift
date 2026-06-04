@@ -182,7 +182,7 @@ struct UpgradeRow: View {
         case .pickaxe:
             return "Tap damage: \(DDMFormat.number(store.tapDamageTotal))"
         case .drillCount:
-            return "Drills: \(level + store.globalLevel(.autoStart) * 2)"
+            return "Drills: \(level + store.globalLevel(.autoStart))"
         case .drillSpeed:
             return "Auto dmg/s: \(DDMFormat.number(store.autoDPS))"
         case .oreValue:

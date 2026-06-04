@@ -136,7 +136,7 @@ struct GlobalRow: View {
                     Text(def.title)
                         .font(.system(size: 15, weight: .heavy, design: .rounded))
                         .foregroundColor(DDMPalette.textPrimary)
-                    Text("Lv \(level)")
+                    Text("L \(level) / \(def.maxLevel)")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundColor(DDMPalette.gemDeep)
                         .padding(.horizontal, 6)
