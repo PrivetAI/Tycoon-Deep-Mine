@@ -29,19 +29,19 @@ struct DDMTechDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // v15.2: costs +5x over v15.1, growth raised to 1.30, effects halved again.
+    // v15.3: all tech effects halved; baseCosts and growth unchanged.
     static let all: [DDMTechDef] = [
         DDMTechDef(kind: .sharpTools, title: "Sharpened Tools",
-                   blurb: "+0.2% to global bonus multiplier per level.",
+                   blurb: "+0.1% to global bonus multiplier per level.",
                    baseCost: 150, costGrowth: 1.30, maxLevel: 30),
         DDMTechDef(kind: .veinMapping, title: "Vein Mapping",
-                   blurb: "+0.2% to global bonus multiplier per level.",
+                   blurb: "+0.1% to global bonus multiplier per level.",
                    baseCost: 200, costGrowth: 1.30, maxLevel: 30),
         DDMTechDef(kind: .cartLogistics, title: "Cart Logistics",
-                   blurb: "+0.02 ore/s cart rate per level (direct).",
+                   blurb: "+0.015 ore/s cart rate per level (direct).",
                    baseCost: 300, costGrowth: 1.30, maxLevel: 30),
         DDMTechDef(kind: .smeltScience, title: "Smelt Science",
-                   blurb: "+0.04 ore/s smelter throughput per level (direct).",
+                   blurb: "+0.03 ore/s smelter throughput per level (direct).",
                    baseCost: 400, costGrowth: 1.30, maxLevel: 30)
     ]
 

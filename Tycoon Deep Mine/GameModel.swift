@@ -222,32 +222,32 @@ struct DDMUpgradeDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // v15.2 glacier ladder. Cost growth UNIFORM 1.25. Effects halved again, costs ~5–8x v15.1.
+    // v15.3 permafrost ladder. Click growth crushed, upgrade growth trimmed.
     static let all: [DDMUpgradeDef] = [
         DDMUpgradeDef(kind: .pickaxe, title: "Pickaxe Power",
-                      blurb: "+0.25 tap damage",
-                      baseCost: 200, costGrowth: 1.25, maxLevel: 9999),
+                      blurb: "+0.08 tap damage",
+                      baseCost: 150, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillCount, title: "Drill Rig",
                       blurb: "+1 drill",
                       baseCost: 1_500, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillSpeed, title: "Drill Tuning",
-                      blurb: "+0.02 base DPS per drill",
+                      blurb: "+0.015 base DPS per drill",
                       baseCost: 12_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .cart, title: "Mine Cart",
-                      blurb: "+0.08 ore/s, +2 cart capacity",
+                      blurb: "+0.06 ore/s, +1 cart capacity",
                       baseCost: 4_500, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .oreValue, title: "Ore Grader",
-                      blurb: "+0.8% bonus (capped at +150%)",
-                      baseCost: 15_000, costGrowth: 1.25, maxLevel: 9999),
+                      blurb: "+0.5% bonus (capped at +100%)",
+                      baseCost: 20_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .refiner, title: "Refiner",
-                      blurb: "+0.4% bonus (capped at +150%)",
-                      baseCost: 100_000, costGrowth: 1.25, maxLevel: 9999),
+                      blurb: "+0.25% bonus (capped at +100%)",
+                      baseCost: 150_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .autoTapper, title: "Auto Pick",
-                      blurb: "+0.02 auto-taps/sec",
-                      baseCost: 250_000, costGrowth: 1.25, maxLevel: 9999),
+                      blurb: "+0.005 auto-taps/sec",
+                      baseCost: 400_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .multiTap, title: "Multi-Strike",
-                      blurb: "+1 strike per tap (max 3 total)",
-                      baseCost: 20_000_000, costGrowth: 1.25, maxLevel: 2)
+                      blurb: "+1 strike per tap (max 2 total)",
+                      baseCost: 30_000_000, costGrowth: 1.25, maxLevel: 1)
     ]
 
     static func def(_ kind: DDMUpgradeKind) -> DDMUpgradeDef {

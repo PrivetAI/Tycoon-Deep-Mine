@@ -268,11 +268,11 @@ struct MineView: View {
                 .tracking(0.6)
                 .foregroundColor(DDMPalette.textMuted)
                 .frame(width: 42, alignment: .leading)
-            DDMProgressBar(progress: store.bonusSum / 1.5,
+            DDMProgressBar(progress: store.bonusSum / 1.0,
                            fill: DDMPalette.gemDeep,
                            track: DDMPalette.rockDark,
                            height: 6)
-            Text("\(Int(store.bonusSum * 100))% / 150%")
+            Text("\(Int(store.bonusSum * 100))% / 100%")
                 .font(.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundColor(DDMPalette.textMuted)
                 .lineLimit(1)
