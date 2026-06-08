@@ -88,10 +88,10 @@ final class DDMStore: ObservableObject {
         1 + upgradeLevel(.multiTap)
     }
 
-    // Per-strike tap (pickaxe) damage. v15.3: base 1 + 0.08/L. L0=1, L10=1.8, L20=2.6. Spec §5.
+    // Per-strike tap (pickaxe) damage. v15.4: base 1 + 0.02/L. L0=1, L10=1.2, L20=1.4. Spec §5.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 0.08
+        let base = 1.0 + Double(lvl) * 0.02
         let d = base * bonusMultiplier
         return d.isFinite ? max(1, d) : 1
     }
@@ -116,10 +116,10 @@ final class DDMStore: ObservableObject {
     }
 
     // Auto-tapper: mechanical arm that delivers tap-strength hits automatically.
-    // v15.3: +0.005 auto-taps/sec per level (was 0.02 — 4x reduction).
+    // v15.4: +0.001 auto-taps/sec per level (5x reduction from v15.3's 0.005).
     var autoTapRate: Double {
         let lvl = upgradeLevel(.autoTapper)
-        let r = Double(lvl) * 0.005
+        let r = Double(lvl) * 0.001
         return r.isFinite ? max(0, r) : 0
     }
 
@@ -170,10 +170,11 @@ final class DDMStore: ObservableObject {
         return r.isFinite ? max(0, r) : 0
     }
 
-    /// Spec §9: bar value = ore.baseValue * 1.2, multiplied by the SAME bonusSum
+    /// Spec §9: bar value = ore.baseValue * 1.6, multiplied by the SAME bonusSum
     /// every other gold source uses. No purity / batch / smelterCore chain.
+    /// v15.4: premium up from 1.2 → 1.6 to scale with ×5 ore tier values.
     func barUnitValue(_ ore: DDMOre) -> Double {
-        let v = ore.baseValue * 1.2 * bonusMultiplier
+        let v = ore.baseValue * 1.6 * bonusMultiplier
         return v.isFinite ? max(0, v) : 0
     }
 
@@ -192,19 +193,19 @@ final class DDMStore: ObservableObject {
     }
 
     // Cart auto-collect & auto-sell rate (ore units / second processed). 0 = manual only.
-    // v15.3: (cartLevel + widePan) * 0.06. cartLogistics tech +0.015 ore/s / level.
+    // v15.4: (cartLevel + widePan) * 0.08. cartLogistics tech +0.02 ore/s / level.
     // Spec §5.
     var cartRate: Double {
         let lvl = upgradeLevel(.cart) + globalLevel(.widePan)
         if lvl <= 0 { return 0 }
-        let techBonus = Double(techLevel(.cartLogistics)) * 0.015  // +0.015 ore/s / level (was 0.02)
-        let r = Double(lvl) * 0.06 + techBonus
+        let techBonus = Double(techLevel(.cartLogistics)) * 0.02  // +0.02 ore/s / level
+        let r = Double(lvl) * 0.08 + techBonus
         return r.isFinite ? r : 0
     }
 
-    // Cart capacity: 8 base + 1 per cart/widePan level. Spec §5.
+    // Cart capacity: 10 base + 2 per cart/widePan level. v15.4: boosted to carry 2× ore throughput. Spec §5.
     var cartCapacity: Int {
-        return 8 + 1 * (upgradeLevel(.cart) + globalLevel(.widePan))
+        return 10 + 2 * (upgradeLevel(.cart) + globalLevel(.widePan))
     }
 
     var hasAutoSell: Bool { cartRate > 0 }

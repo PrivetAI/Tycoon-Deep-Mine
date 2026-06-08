@@ -38,7 +38,7 @@ struct DDMTechDef: Identifiable {
                    blurb: "+0.1% to global bonus multiplier per level.",
                    baseCost: 200, costGrowth: 1.30, maxLevel: 30),
         DDMTechDef(kind: .cartLogistics, title: "Cart Logistics",
-                   blurb: "+0.015 ore/s cart rate per level (direct).",
+                   blurb: "+0.02 ore/s cart rate per level (direct).",
                    baseCost: 300, costGrowth: 1.30, maxLevel: 30),
         DDMTechDef(kind: .smeltScience, title: "Smelt Science",
                    blurb: "+0.03 ore/s smelter throughput per level (direct).",

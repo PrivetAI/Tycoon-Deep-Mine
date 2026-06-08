@@ -29,19 +29,20 @@ enum DDMOre: Int, CaseIterable, Codable {
         }
     }
 
-    // Base sell value per unit of ore. v15.2: flat ~11%-per-tier ladder 1.0..2.0 (tier 10 = 2.0× tier 1).
+    // Base sell value per unit of ore. v15.4: flat +1.0-per-tier ladder 5.0..14.0 (5× the v15.3 values).
+    // diamond/coal ratio = 14/5 = 2.8 (same relative spread as before).
     var baseValue: Double {
         switch self {
-        case .coal:     return 1.0
-        case .copper:   return 1.111
-        case .tin:      return 1.222
-        case .iron:     return 1.333
-        case .silver:   return 1.444
-        case .gold:     return 1.555
-        case .ruby:     return 1.666
-        case .emerald:  return 1.777
-        case .sapphire: return 1.888
-        case .diamond:  return 2.0
+        case .coal:     return 5.0
+        case .copper:   return 6.0
+        case .tin:      return 7.0
+        case .iron:     return 8.0
+        case .silver:   return 9.0
+        case .gold:     return 10.0
+        case .ruby:     return 11.0
+        case .emerald:  return 12.0
+        case .sapphire: return 13.0
+        case .diamond:  return 14.0
         }
     }
 
@@ -222,11 +223,13 @@ struct DDMUpgradeDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // v15.3 permafrost ladder. Click growth crushed, upgrade growth trimmed.
+    // v15.4 drifter: click side gutted (pickaxe 0.02/L, auto-pick 0.001/L),
+    // ore side boosted (cart 0.08/L, +2 cap/L). Multi-Strike REMOVED from catalog
+    // (enum case retained for save compat; tapDig() defaults to 1 strike at L0).
     static let all: [DDMUpgradeDef] = [
         DDMUpgradeDef(kind: .pickaxe, title: "Pickaxe Power",
-                      blurb: "+0.08 tap damage",
-                      baseCost: 150, costGrowth: 1.25, maxLevel: 9999),
+                      blurb: "+0.02 tap damage",
+                      baseCost: 100, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillCount, title: "Drill Rig",
                       blurb: "+1 drill",
                       baseCost: 1_500, costGrowth: 1.25, maxLevel: 9999),
@@ -234,7 +237,7 @@ struct DDMUpgradeDef: Identifiable {
                       blurb: "+0.015 base DPS per drill",
                       baseCost: 12_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .cart, title: "Mine Cart",
-                      blurb: "+0.06 ore/s, +1 cart capacity",
+                      blurb: "+0.08 ore/s, +2 cart capacity",
                       baseCost: 4_500, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .oreValue, title: "Ore Grader",
                       blurb: "+0.5% bonus (capped at +100%)",
@@ -243,11 +246,8 @@ struct DDMUpgradeDef: Identifiable {
                       blurb: "+0.25% bonus (capped at +100%)",
                       baseCost: 150_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .autoTapper, title: "Auto Pick",
-                      blurb: "+0.005 auto-taps/sec",
-                      baseCost: 400_000, costGrowth: 1.25, maxLevel: 9999),
-        DDMUpgradeDef(kind: .multiTap, title: "Multi-Strike",
-                      blurb: "+1 strike per tap (max 2 total)",
-                      baseCost: 30_000_000, costGrowth: 1.25, maxLevel: 1)
+                      blurb: "+0.001 auto-taps/sec",
+                      baseCost: 600_000, costGrowth: 1.25, maxLevel: 9999)
     ]
 
     static func def(_ kind: DDMUpgradeKind) -> DDMUpgradeDef {
@@ -457,9 +457,9 @@ enum DDMWorld {
         let unlocked = DDMOre.allCases.filter { $0.unlockDepth <= depth }
         let topIndex = (unlocked.last?.rawValue ?? 0)
 
-        // v15.2: 15% ore chance, FIXED 1 unit drop amount (no depth slope). Ore
+        // v15.4: 30% ore chance (doubled from 15%), FIXED 1 unit drop amount (no depth slope). Ore
         // VALUE scales via the flat tier gradient + bonusMultiplier.
-        let oreChance = 0.15
+        let oreChance = 0.30
         var oreType: DDMOre? = nil
         var oreAmount: Double = 0
 
@@ -470,10 +470,9 @@ enum DDMWorld {
             oreAmount = 1.0
         }
 
-        // v15.2: rubble is purely LINEAR in depth — `0.2 + 0.2*depth`. Zone goldMult is 1.0
-        // so this is the canonical per-block gold income. d=0 → 0.2→1, d=80 → 16.2, d=99 → 20.
-        // Boss block gets ×3 rubble. No extra boss gold formula.
-        let rubble = (0.2 + 0.2 * Double(depth)).rounded()
+        // v15.4: rubble HALVED — `0.1 + 0.1*depth`. Shifts income share toward ore/cart.
+        // d=0 → 0.1→1, d=80 → 8.1, d=99 → 10.0. Boss block gets ×3 rubble (unchanged).
+        let rubble = (0.1 + 0.1 * Double(depth)).rounded()
 
         // Boss gate. v15: rubble × 3 (inline — no separate add). Gems awarded at collapse only.
         if DDMZone.isBossDepth(depth) {

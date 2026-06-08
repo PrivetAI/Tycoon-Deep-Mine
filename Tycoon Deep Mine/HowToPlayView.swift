@@ -12,10 +12,10 @@ struct HowToPlayView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         step(icon: AnyView(DDMPickaxeShape(color: DDMPalette.accentDeep, handle: DDMPalette.dirt, size: 30)),
                              title: "Mining",
-                             body: "Tap or let drills mine blocks. HP grows linearly with depth — 60 + 6 × depth. Bosses (last block of each zone) have ×8 HP and ×3 gold. 10 zones, each unlocking a new ore tier (Coal → Diamond, value 1.0 → 2.0).")
+                             body: "Tap or let drills mine blocks. HP grows linearly with depth — 60 + 6 × depth. Bosses (last block of each zone) have ×8 HP and ×3 gold. 30% chance per block to drop ore. 10 zones, each unlocking a new ore tier (Coal → Diamond, value 5 → 14).")
                         step(icon: AnyView(DDMTabUpgradeIcon(color: DDMPalette.gemDeep, size: 28)),
                              title: "Upgrades",
-                             body: "Every upgrade costs ×1.25 more per level. Ore Grader (+0.5%/level) and Refiner (+0.25%/level) add to a shared bonus, capped at +100 %. Gold and damage share the same multiplier. Max 2 strikes with Multi-Strike.")
+                             body: "Every upgrade costs ×1.25 more per level. Ore Grader (+0.5%/level) and Refiner (+0.25%/level) add to a shared bonus, capped at +100 %. Gold and damage share the same multiplier. Upgrade Mine Cart to carry and sell ore faster.")
                         step(icon: AnyView(DDMGemBadge(size: 28)),
                              title: "Prestige",
                              body: "Reach deeper to collapse. Gems = floor((max depth / 100)^0.40). Each gem permanently gives +0.05 % bonus (shared cap). Spend gems on Shaft Head Start, Standing Drill, Wide Pan, Night Shift, and Seed Vault.")
