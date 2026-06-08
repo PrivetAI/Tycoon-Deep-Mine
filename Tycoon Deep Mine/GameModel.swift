@@ -223,19 +223,19 @@ struct DDMUpgradeDef: Identifiable {
         return c.isFinite ? c.rounded() : Double.greatestFiniteMagnitude
     }
 
-    // v15.4 drifter: click side gutted (pickaxe 0.02/L, auto-pick 0.001/L),
-    // ore side boosted (cart 0.08/L, +2 cap/L). Multi-Strike REMOVED from catalog
+    // v15.5 frostbite: click side gutted further (pickaxe 0.005/L, auto-pick 0.0002/L),
+    // drill boosted (base 0.10/drill, tuning 0.025/L). Multi-Strike REMOVED from catalog
     // (enum case retained for save compat; tapDig() defaults to 1 strike at L0).
     static let all: [DDMUpgradeDef] = [
         DDMUpgradeDef(kind: .pickaxe, title: "Pickaxe Power",
-                      blurb: "+0.02 tap damage",
+                      blurb: "+0.005 tap damage",
                       baseCost: 100, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillCount, title: "Drill Rig",
                       blurb: "+1 drill",
-                      baseCost: 1_500, costGrowth: 1.25, maxLevel: 9999),
+                      baseCost: 2_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .drillSpeed, title: "Drill Tuning",
-                      blurb: "+0.015 base DPS per drill",
-                      baseCost: 12_000, costGrowth: 1.25, maxLevel: 9999),
+                      blurb: "+0.025 base DPS per drill",
+                      baseCost: 15_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .cart, title: "Mine Cart",
                       blurb: "+0.08 ore/s, +2 cart capacity",
                       baseCost: 4_500, costGrowth: 1.25, maxLevel: 9999),
@@ -246,8 +246,8 @@ struct DDMUpgradeDef: Identifiable {
                       blurb: "+0.25% bonus (capped at +100%)",
                       baseCost: 150_000, costGrowth: 1.25, maxLevel: 9999),
         DDMUpgradeDef(kind: .autoTapper, title: "Auto Pick",
-                      blurb: "+0.001 auto-taps/sec",
-                      baseCost: 600_000, costGrowth: 1.25, maxLevel: 9999)
+                      blurb: "+0.0002 auto-taps/sec",
+                      baseCost: 1_000_000, costGrowth: 1.25, maxLevel: 9999)
     ]
 
     static func def(_ kind: DDMUpgradeKind) -> DDMUpgradeDef {
@@ -470,13 +470,13 @@ enum DDMWorld {
             oreAmount = 1.0
         }
 
-        // v15.4: rubble HALVED — `0.1 + 0.1*depth`. Shifts income share toward ore/cart.
-        // d=0 → 0.1→1, d=80 → 8.1, d=99 → 10.0. Boss block gets ×3 rubble (unchanged).
-        let rubble = (0.1 + 0.1 * Double(depth)).rounded()
+        // v15.5: rubble HALVED again — `0.05 + 0.05*depth`. Shifts income share toward ore/cart.
+        // d=0 → 0.05→1, d=80 → 4.05, d=99 → 5.0. Boss block gets ×2.5 rubble.
+        let rubble = (0.05 + 0.05 * Double(depth)).rounded()
 
-        // Boss gate. v15: rubble × 3 (inline — no separate add). Gems awarded at collapse only.
+        // Boss gate. v15.5: rubble × 2.5 (slightly less than v15.4's ×3). Gems awarded at collapse only.
         if DDMZone.isBossDepth(depth) {
-            let bossGold = (rubble * 3.0).rounded()
+            let bossGold = (rubble * 2.5).rounded()
             let richOre = unlocked.last ?? .coal
             let bossOreAmt = Double(rng.nextInt(5, 10))
             return DDMBlock(depth: depth, maxHP: hp, hp: hp,

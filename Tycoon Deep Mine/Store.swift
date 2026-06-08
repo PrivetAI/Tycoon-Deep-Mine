@@ -17,7 +17,7 @@ final class DDMStore: ObservableObject {
     private var lastTick: Date = Date()
     private var saveAccumulator: Double = 0
 
-    // v14: full economy REWRITE FROM SCRATCH per user direction. 19 builds of tuning
+    // v15.5: full economy REWRITE FROM SCRATCH per user direction. 19 builds of tuning
     // converged on these structural rules — this is the canonical implementation:
     //   * HP curve LINEAR (`50 + d*10` * hpMult) — no `pow(1.020, d)` anywhere
     //   * Block rubble LINEAR (`1 + d*2`) — no zone goldMult cascade
@@ -88,12 +88,12 @@ final class DDMStore: ObservableObject {
         1 + upgradeLevel(.multiTap)
     }
 
-    // Per-strike tap (pickaxe) damage. v15.4: base 1 + 0.02/L. L0=1, L10=1.2, L20=1.4. Spec §5.
+    // Per-strike tap (pickaxe) damage. v15.5: base 0.5 + 0.005/L. L0=0.5, L10=0.55, L100=1.0. Spec §5.
     var tapDamage: Double {
         let lvl = upgradeLevel(.pickaxe)
-        let base = 1.0 + Double(lvl) * 0.02
+        let base = 0.5 + Double(lvl) * 0.005
         let d = base * bonusMultiplier
-        return d.isFinite ? max(1, d) : 1
+        return d.isFinite ? max(0.1, d) : 0.1
     }
 
     // Full damage of one tap action (all strikes combined). Used for display only —
@@ -103,23 +103,23 @@ final class DDMStore: ObservableObject {
         return d.isFinite ? max(1, d) : 1
     }
 
-    // Auto drill damage per second. v15.3: count = drillCount + autoStart*1 free drills.
-    // perDrill = 0.06 + drillSpeed*0.015. Total = count × perDrill × bonusMultiplier. Spec §5.
+    // Auto drill damage per second. v15.5: count = drillCount + autoStart*1 free drills.
+    // perDrill = 0.10 + drillSpeed*0.025. Total = count × perDrill × bonusMultiplier. Spec §5.
     // turboDrills tech contribution stubbed for Task 16.
     var autoDPS: Double {
         let countLvl = upgradeLevel(.drillCount)
         let count = Double(countLvl) + Double(globalLevel(.autoStart)) * 1.0
         if count <= 0 { return 0 }
-        let perDrill = 0.06 + Double(upgradeLevel(.drillSpeed)) * 0.015
+        let perDrill = 0.10 + Double(upgradeLevel(.drillSpeed)) * 0.025
         let dps = count * perDrill * bonusMultiplier
         return dps.isFinite ? max(0, dps) : 0
     }
 
     // Auto-tapper: mechanical arm that delivers tap-strength hits automatically.
-    // v15.4: +0.001 auto-taps/sec per level (5x reduction from v15.3's 0.005).
+    // v15.5: +0.0002 auto-taps/sec per level (5x reduction from v15.4's 0.001).
     var autoTapRate: Double {
         let lvl = upgradeLevel(.autoTapper)
-        let r = Double(lvl) * 0.001
+        let r = Double(lvl) * 0.0002
         return r.isFinite ? max(0, r) : 0
     }
 
