@@ -3,6 +3,7 @@ import SwiftUI
 struct MineView: View {
     @EnvironmentObject var store: DDMStore
     @State private var tapBounce = false
+    @State private var hintPulse = false
 
     var body: some View {
         GeometryReader { geo in
@@ -199,6 +200,18 @@ struct MineView: View {
                     .font(.system(size: 11, weight: .heavy, design: .rounded))
                     .tracking(1.2)
                     .foregroundColor(DDMPalette.goldLight)
+            } else if store.save.totalTaps < 5 {
+                // First-launch tap affordance — explicit instruction for new players.
+                Text("TAP THE BLOCK TO MINE")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .tracking(1.4)
+                    .foregroundColor(DDMPalette.goldLight)
+                    .opacity(hintPulse ? 0.55 : 1.0)
+                    .onAppear {
+                        withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                            hintPulse = true
+                        }
+                    }
             }
             // HP bar
             VStack(spacing: 4) {
@@ -254,8 +267,9 @@ struct MineView: View {
             }
             .buttonStyle(.plain)
             .disabled(store.totalHeldOre <= 0)
+            .opacity(store.totalHeldOre > 0 ? 1.0 : 0.5)
             .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+            .padding(.bottom, 18)
         }
         .padding(.top, 10)
         .background(DDMPalette.cavern.edgesIgnoringSafeArea(.bottom))
@@ -308,7 +322,7 @@ struct MineView: View {
         let held = DDMOre.allCases.filter { (store.save.oreCounts[$0.rawValue] ?? 0) > 0 }
         return Group {
             if held.isEmpty {
-                Text("Dig to collect ore…")
+                Text("Mine ore by tapping the block above")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(DDMPalette.textOnDarkMuted)
                     .frame(maxWidth: .infinity)
