@@ -13,6 +13,7 @@ struct MineView: View {
                     topBar
                     digFace(screenSize: geo.size)
                     bottomPanel
+                        .layoutPriority(1)
                 }
             }
         }

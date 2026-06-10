@@ -9,27 +9,27 @@ struct RootTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
-                Group {
-                    switch selectedTab {
-                    case 0:
-                        NavigationView { MineView() }
-                            .navigationViewStyle(StackNavigationViewStyle())
-                    case 1:
-                        NavigationView { UpgradesView() }
-                            .navigationViewStyle(StackNavigationViewStyle())
-                    case 2:
-                        NavigationView { CollapseView() }
-                            .navigationViewStyle(StackNavigationViewStyle())
-                    case 3:
-                        NavigationView { AwardsView() }
-                            .navigationViewStyle(StackNavigationViewStyle())
-                    default:
-                        NavigationView { MoreView() }
-                            .navigationViewStyle(StackNavigationViewStyle())
-                    }
+            Group {
+                switch selectedTab {
+                case 0:
+                    NavigationView { MineView() }
+                        .navigationViewStyle(StackNavigationViewStyle())
+                case 1:
+                    NavigationView { UpgradesView() }
+                        .navigationViewStyle(StackNavigationViewStyle())
+                case 2:
+                    NavigationView { CollapseView() }
+                        .navigationViewStyle(StackNavigationViewStyle())
+                case 3:
+                    NavigationView { AwardsView() }
+                        .navigationViewStyle(StackNavigationViewStyle())
+                default:
+                    NavigationView { MoreView() }
+                        .navigationViewStyle(StackNavigationViewStyle())
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 tabBar
             }
 
